@@ -1,0 +1,86 @@
+@import "~taro-ui/dist/style/components/calendar.scss";
+@import "~taro-ui/dist/style/components/tabs.scss";
+@import "~taro-ui/dist/style/components/list.scss";
+@import "~taro-ui/dist/style/components/icon.scss";
+@import "~taro-ui/dist/style/components/button.scss";
+@import "~taro-ui/dist/style/components/loading.scss";
+@import "~taro-ui/dist/style/components/divider.scss";
+@import "~taro-ui/dist/style/components/checkbox.scss";
+@import "~taro-ui/dist/style/components/action-sheet.scss";
+@import "~taro-ui/dist/style/components/article.scss";
+
+.container {
+  //   padding-left: 25px;
+  //   padding-right: 25px;
+}
+
+.calendarView {
+  background-color: #f7f7f7;
+  padding: 20px 20px 55px 20px;
+}
+
+.inputButton {
+  width: 400px;
+  padding: 30px;
+  margin: 0 auto;
+}
+
+.delButtonView {
+  padding-top: 35px;
+  flex: 1;
+}
+
+.submitButton {
+  //   width: 200px;
+  margin: 0 auto;
+}
+
+.dividerButton {
+  font-size: 25px;
+  position: relative;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 14px;
+  padding-right: 14px;
+  line-height: 2.55555556;
+}
+
+.noteEditButton {
+  font-size: 25px;
+  position: relative;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 14px;
+  padding-right: 14px;
+  line-height: 2.55555556;
+}
+
+.tabView {
+  // padding-left: 25px;
+  // padding-right: 25px;
+  margin-top: -35px;
+}
+
+.tabPanelView {
+  padding-left: 25px;
+  padding-right: 25px;
+}
+
+.at-tabs__header {
+  border-top-left-radius: 50px;
+  border-top-right-radius: 50px;
+}
+
+.at-checkbox {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.emptyContentView {
+  height: 380px;
+  display: flex;
+  justify-content: center; 
+  align-items: center; 
+}

@@ -1,0 +1,25 @@
+@import "~taro-ui/dist/style/components/button.scss";
+@import "~taro-ui/dist/style/components/loading.scss";
+@import "~taro-ui/dist/style/components/toast.scss";
+@import "~taro-ui/dist/style/components/input.scss";
+@import "~taro-ui/dist/style/components/icon.scss";
+@import "~taro-ui/dist/style/components/segmented-control.scss";
+@import "~taro-ui/dist/style/components/radio.scss";
+
+.recordView {
+  padding: 25px;
+}
+.confirmView {
+  margin-top: 65px;
+}
+
+.segmentView {
+  flex: 1;
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.segementComp {
+  width: 350px;
+  margin: 0 auto;
+}

@@ -1,0 +1,30 @@
+<block wx:if="{{$taroCompReady}}">
+    <view class="WeekSwiper-wrap" style="{{anonymousState__temp}}">
+        <view class="WeekSwiper-row">
+            <view>日</view>
+            <view>一</view>
+            <view>二</view>
+            <view>三</view>
+            <view>四</view>
+            <view>五</view>
+            <view>六</view>
+        </view>
+        <swiper class="WeekSwiper-swiper" bindchange="onSwiperChange" current="{{swiperIdx}}" circular="{{true}}">
+            <swiper-item>
+                <view class="WeekSwiper-row WeekSwiper-day">
+                    <view wx:key="$original" bindtap="clickDay" class="{{val.$original === selectedDate ? 'WeekSwiper-day-selected' : ''}}" style="{{val.$loopState__temp3}}" wx:for="{{loopArray0}}" wx:for-item="val" wx:for-index="_anonIdx2" data-e-tap-so="this" data-e-tap-a-a="{{val.$original}}">{{val.$loopState__temp5}}</view>
+                </view>
+            </swiper-item>
+            <swiper-item>
+                <view class="WeekSwiper-row">
+                    <view wx:key="$original" bindtap="clickDay" class="{{val.$original === selectedDate ? 'WeekSwiper-day-selected' : ''}}" style="{{val.$loopState__temp7}}" wx:for="{{loopArray1}}" wx:for-item="val" wx:for-index="_anonIdx4" data-e-tap-so="this" data-e-tap-a-a="{{val.$original}}">{{val.$loopState__temp9}}</view>
+                </view>
+            </swiper-item>
+            <swiper-item>
+                <view class="WeekSwiper-row">
+                    <view wx:key="$original" bindtap="clickDay" class="{{val.$original === selectedDate ? 'WeekSwiper-day-selected' : ''}}" style="{{val.$loopState__temp11}}" wx:for="{{loopArray2}}" wx:for-item="val" wx:for-index="_anonIdx6" data-e-tap-so="this" data-e-tap-a-a="{{val.$original}}">{{val.$loopState__temp13}}</view>
+                </view>
+            </swiper-item>
+        </swiper>
+    </view>
+</block>

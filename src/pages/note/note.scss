@@ -1,0 +1,17 @@
+@import "~taro-ui/dist/style/components/button.scss";
+@import "~taro-ui/dist/style/components/loading.scss";
+@import "~taro-ui/dist/style/components/toast.scss";
+@import "~taro-ui/dist/style/components/input.scss";
+@import "~taro-ui/dist/style/components/icon.scss";
+@import "~taro-ui/dist/style/components/textarea.scss";
+
+.noteView {
+  padding: 25px;
+}
+.confirmView {
+  margin-top: 65px;
+}
+
+.textareaView {
+  padding: 15px;
+}

@@ -1,0 +1,15 @@
+@import "~taro-ui/dist/style/components/list.scss";
+
+.titleCompView {
+    margin: 45px 0 30px 25px;
+    padding-left: 15px;
+    border-left: 4px solid #346fc2;
+  .titleText {
+    font-size: 32px;
+    color: #333;
+  }
+}
+
+.at-list__item .item-content__info-title{
+    color:#cecece ;
+}
