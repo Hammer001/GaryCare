@@ -1,3 +1,3 @@
 export default {
-  navigationBarTitleText: "请输入"
+  navigationBarTitleText: "记录"
 };

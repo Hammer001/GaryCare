@@ -3,6 +3,7 @@
 @import "~taro-ui/dist/style/components/icon.scss";
 @import "~taro-ui/dist/style/components/avatar.scss";
 @import "~taro-ui/dist/style/components/flex.scss";
+@import "~taro-ui/dist/style/components/modal.scss";
 
 .settingView {
   //   padding: 25px;
@@ -18,17 +19,22 @@
 }
 
 .avatarView {
-  // padding: 25px;
-  text-align: center;
-  border-top-left-radius: 30px;
-  border-top-right-radius: 30px;
-  margin-top: -29px;
-  background-color: white;
+  height: 200px;
+  align-items: center;
+  // padding-left: 30px;
+  .avatarComp {
+      margin:0 auto;
+  }
+  .textView {
+    color: white;
+    font-weight: 600;
+    font-size: 34rpx;
+  }
 }
 
 .dataView {
   height: 105px;
-  padding-top: 40px;
+  padding-top: 30px;
   padding-bottom: 40px;
   text-align: center;
   .dataContent {
@@ -44,7 +50,6 @@
     padding-top: 5px;
   }
 }
-
 .userView {
   text-align: center;
   margin-top: 20px;
@@ -55,5 +60,22 @@
 }
 
 .contentView {
-  padding: 25px;
+  //   padding: 25px;
+}
+
+.dateBorder {
+  height: 10px;
+  width: 90px;
+  border-bottom: 6px solid #03a9f4;
+  margin: 0 auto;
+  border-radius: 6px;
+}
+
+.dividerView {
+  padding-top: 15px;
+  background-color: #f7f7f7;
+}
+
+.at-list__item {
+  padding: 25px 34px;
 }

@@ -9,7 +9,7 @@ const NoteTab = ({ noteData, goEdit, isEmptyContent }) => {
   return (
     <View>
       <View className="at-article">
-        <View className="at-article__p">{noteData}</View>
+        <View className="at-article__p noteData">{noteData}</View>
       </View>
 
       {!isEmptyContent && (

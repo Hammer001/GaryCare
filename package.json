@@ -41,6 +41,7 @@
     "@tarojs/react": "3.0.21",
     "@tarojs/runtime": "3.0.21",
     "@tarojs/taro": "3.0.21",
+    "echarts12": "^1.1.6",
     "lodash": "4.17.15",
     "moment": "^2.29.1",
     "react": "^16.10.0",

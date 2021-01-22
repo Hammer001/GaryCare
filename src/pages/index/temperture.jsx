@@ -34,10 +34,10 @@ const TempertureList = ({ tempData }) => {
     return (
       <AtList>
         {tempData.map(item => {
-          const status = tempLevel(item);
+          const status = tempLevel(item["tempValue"]);
           return (
             <AtListItem
-              title={item + "℃"}
+              title={item["tempValue"] + "℃"}
               extraText={_.get(status, "title", "")}
               thumb={_.get(status, "icon")}
             />

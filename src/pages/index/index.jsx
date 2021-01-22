@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import Taro from "@tarojs/taro";
 import { connect } from "react-redux";
-import { View, Text } from "@tarojs/components";
+import { View, Text, ScrollView } from "@tarojs/components";
 // import { WeekSwiper } from 'taro-week-swiper'
 import {
   AtCalendar,
@@ -16,14 +16,17 @@ import { getToday } from "../../util/timeUtil";
 import {
   setGaryData,
   setSelectDay,
-  changeDataUpdateStatus
+  changeDataUpdateStatus,
+  changeUserData
 } from "../../actions/gary";
 import { findDateIndex } from "../../util/findDateIndex";
-import moment from "moment";
 import { showToast } from "../../util/toastUtil";
 import FeedList from "./feed";
 import TempertureList from "./temperture";
 import NoteTab from "./noteTab";
+import PooList from "./pooList";
+import SleepList from "./sleepList";
+import { globalUrl } from "../../util/globalUrl";
 import _ from "lodash";
 import "./index.scss";
 /**
@@ -41,11 +44,11 @@ function isEmptyString(value) {
 }
 
 class Index extends Component {
-  //   config = {
-  //     usingComponents: {
-  //       weekSwiper: "../../component/WeekSwiper"
-  //     }
-  //   };
+  config = {
+    usingComponents: {
+      weekSwiper: "../../component/WeekSwiper"
+    }
+  };
 
   constructor(props) {
     super(props);
@@ -54,26 +57,69 @@ class Index extends Component {
       currentDay: null,
       duration: null,
       actionOpen: false,
-      markDate: []
+      markDate: [],
+      userId: null
     };
     this.today = getToday();
   }
 
+  onShareAppMessage(res) {
+    return {
+      title: "GaryCare",
+      path: "/pages/login/login",
+      // imageUrl: "/images/aikepler-logo.jpeg",
+      success: function(res) {
+        // 转发成功
+        console.log("转发成功", res);
+      },
+      fail: function(res) {
+        // 转发失败
+        console.log("转发失败", res);
+      }
+    };
+  }
+
   componentDidShow(options) {
+    const { isUpdate } = this.props;
     // console.log("index：进入小程序", options);
-    if (this.props.isUpdate) {
+    if (_.get(isUpdate, "data")) {
       //每次进入该页面，检查是否需要更新
       this.updateFromStorage();
+    }
+
+    if (_.get(isUpdate, "login")) {
+      this.initialUserEnterPage();
     }
   }
 
   componentDidMount() {
+    this.initialUserEnterPage();
     this.updateFromStorage();
+  }
+
+  initialUserEnterPage() {
+    // this.getUserId();
     this.props.updateSelectDay(this.today);
     this.setState({
       currentDay: this.today
     });
+    //this.props.changeUserLoginStatus(false); //用户重新登录完进行将状态改为false
   }
+
+  //   getUserId = () => {
+  //     Taro.getStorage({
+  //       key: "user",
+  //       success: res => {
+  //         const userData = _.get(res, "data", null);
+  //         if (userData && userData._id) {
+  //           this.setState({
+  //             userId: userData._id
+  //           });
+  //           this.props.changeUserData(userData);
+  //         }
+  //       }
+  //     });
+  //   };
 
   updateFromStorage = () => {
     // 更新care数据，以及喂奶间隔
@@ -81,7 +127,6 @@ class Index extends Component {
       key: "gary-care",
       success: res => {
         let getData = _.get(res, "data", null);
-        let newMarkArray = [];
         getData && // 删除空数据，或者把曾经某一天的数据全删了，也会清空当天的记录。
           _.remove(getData, r => {
             return (
@@ -90,33 +135,47 @@ class Index extends Component {
               isEmptyString(r.note)
             );
           });
-        getData &&
-          getData.map(n => {
-            if (!isEmptyString(n.note)) {
-              newMarkArray.push(n.date);
-            }
-          });
 
         // console.log("newMarkArray", newMarkArray);
         this.setState({
-          feedData: getData,
-          markDate: newMarkArray
+          feedData: getData
         });
+
         this.props.updateGaryData(getData);
+
+        if (_.get(this.props, "userData._id", null)) {
+          Taro.request({
+            url: globalUrl + "/update/user/data",
+            method: "POST",
+            data: {
+              _id: _.get(this.props, "userData._id"),
+              data: getData
+            },
+            header: {
+              "content-type": "application/json"
+            },
+            success: res => {
+              console.log(res);
+            }
+          });
+        }
       }
     });
 
     Taro.getStorage({
-      key: "gary-duration",
+      key: "gary-custom",
       success: res => {
         const getData = _.get(res, "data", null);
-        this.setState({
-          duration: getData
-        });
+        // console.log(getData);
+        if (getData) {
+          this.setState({
+            duration: getData["duration"]
+          });
+        }
       }
     });
 
-    this.props.changeUpdateStatus(false); //更新完数据将更新状态修改为false
+    this.props.changeUpdateStatus({ login: false, data: false }); //更新完数据将更新状态修改为false
   };
 
   onTabChange(value) {
@@ -136,14 +195,15 @@ class Index extends Component {
     this.handleActionSheet(true);
   }
 
-  goInput = () => {
-    Taro.navigateTo({ url: "/pages/record/record" });
+  goInput = type => {
+    Taro.navigateTo({ url: "/pages/record/record" + "?type=" + type });
   };
 
-  handleBatchDeleteFeed = (list, index) => {
+  handleBatchDelete = (list, index, key) => {
+    //批量删除
     const { feedData, currentDay } = this.state;
-    let newFeedData = feedData;
-    let feedList = _.get(feedData[index], "feed");
+    let newFeedData = feedData; // 代表当前日期的所有数据，根据key值找到对应的对象数据
+    let feedList = _.get(feedData[index], key);
     if (_.isArray(list) && _.size(list) > 0) {
       list.map(item => {
         _.remove(feedList, r => r.key === item);
@@ -172,6 +232,10 @@ class Index extends Component {
     }
   };
 
+  onScroll(e) {
+    console.log(e.detail);
+  }
+
   render() {
     const {
       tab,
@@ -183,8 +247,10 @@ class Index extends Component {
     } = this.state;
     const tabList = [
       { title: "喂奶" },
+      { title: "排便" },
+      { title: "睡眠" },
       { title: "体温" },
-      { title: "星标笔记" }
+      { title: "笔记" }
     ];
     const dateIndex = findDateIndex(feedData, currentDay);
     const currentData = dateIndex !== -1 ? feedData[dateIndex] : null;
@@ -194,20 +260,23 @@ class Index extends Component {
     // console.log("markDate", markDate);
     return (
       <View className="container">
+        {/* <ScrollView scrollY onScroll={this.onScroll}  scrollWithAnimation style='height:100vh'> */}
         <View className="calendarView">
           <AtCalendar
             format="YYYY-MM-DD"
             marks={markDate}
             onDayClick={value => this.onCalendarChange(value)}
-            onDayLongClick={value => this.onLongPressCalendar(value)}
+            // onDayLongClick={value => this.onLongPressCalendar(value)}
           />
+
+          {/* <weekSwiper /> */}
 
           <View className="inputButton">
             <AtButton
               type="primary"
               size="small"
               circle
-              onClick={() => this.goInput()}
+              onClick={() => this.goInput(tab)}
             >
               <AtIcon value="add-circle" size="16"></AtIcon>
               <Text style="marign-left:7rpx;"> 记录宝宝的日常</Text>
@@ -218,6 +287,7 @@ class Index extends Component {
         <View className="tabView">
           <AtTabs
             current={tab}
+            scroll
             tabList={tabList}
             onClick={this.onTabChange.bind(this)}
           >
@@ -228,22 +298,48 @@ class Index extends Component {
                   nextFeed={duration}
                   selectedDay={currentDay}
                   today={this.today}
-                  batchDel={list => this.handleBatchDeleteFeed(list, dateIndex)}
+                  batchDel={list =>
+                    this.handleBatchDelete(list, dateIndex, "feed")
+                  }
                 />
               </View>
             </AtTabsPane>
             <AtTabsPane current={tab} index={1}>
+              <View className="tabPanelView">
+                <PooList
+                  pooData={_.get(currentData, "poo", "")}
+                  selectedDay={currentDay}
+                  today={this.today}
+                  batchDel={list =>
+                    this.handleBatchDelete(list, dateIndex, "poo")
+                  }
+                />
+              </View>
+            </AtTabsPane>
+            <AtTabsPane current={tab} index={2}>
+              <View className="tabPanelView">
+                <SleepList
+                  sleepList={_.get(currentData, "sleep", "")}
+                  selectedDay={currentDay}
+                  today={this.today}
+                  batchDel={list =>
+                    this.handleBatchDelete(list, dateIndex, "sleep")
+                  }
+                />
+              </View>
+            </AtTabsPane>
+            <AtTabsPane current={tab} index={3}>
               <View className="tabPanelView">
                 <TempertureList
                   tempData={_.get(currentData, "temperture", null)}
                 />
               </View>
             </AtTabsPane>
-            <AtTabsPane current={tab} index={2}>
+            <AtTabsPane current={tab} index={4}>
               <View className="tabPanelView">
                 <NoteTab
                   noteData={_.get(currentData, "note", "")}
-                  goEdit={() => Taro.navigateTo({ url: "/pages/note/note" })}
+                  goEdit={() => this.goInput("editnote")}
                   isEmptyContent={isEmptyString(_.get(currentData, "note", ""))}
                 />
               </View>
@@ -251,7 +347,7 @@ class Index extends Component {
           </AtTabs>
         </View>
 
-        <AtActionSheet
+        {/* <AtActionSheet
           isOpened={actionOpen}
           cancelText="取消"
           onCancel={() => this.handleActionSheet(false)}
@@ -260,8 +356,8 @@ class Index extends Component {
           <AtActionSheetItem onClick={() => this.handleActionSheet(1)}>
             星标笔记
           </AtActionSheetItem>
-          {/* <AtActionSheetItem>按钮二</AtActionSheetItem> */}
-        </AtActionSheet>
+        </AtActionSheet> */}
+        {/* </ScrollView> */}
       </View>
     );
   }
@@ -271,7 +367,8 @@ const mapStateToProps = state => {
   return {
     garyData: state.gary.garyData,
     selectDay: state.gary.selectDay,
-    isUpdate: state.gary.isDataUpate
+    isUpdate: state.gary.isDataUpate,
+    userData: state.gary.userData
   };
 };
 
@@ -285,6 +382,9 @@ const mapDispatchToProps = dispatch => {
     },
     changeUpdateStatus: status => {
       dispatch(changeDataUpdateStatus(status));
+    },
+    changeUserData: status => {
+      dispatch(changeUserData(status));
     }
   };
 };

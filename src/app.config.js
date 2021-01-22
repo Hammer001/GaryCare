@@ -1,9 +1,12 @@
 export default {
   pages: [
+      "pages/login/login", 
       "pages/index/index", 
       "pages/settings/settings",
       "pages/record/record",
       "pages/note/note",
+      "pages/analysis/analysis",
+      "pages/aboutus/about",
 ],
   tabBar: {
     list: [
@@ -12,6 +15,12 @@ export default {
         iconPath: "asserts/care.png",
         selectedIconPath: "asserts/care_selected.png",
         text: "Care"
+      },
+      {
+        pagePath: "pages/analysis/analysis",
+        iconPath: "asserts/analysis.png",
+        selectedIconPath: "asserts/analysis_selected.png",
+        text: "统计"
       },
       {
         pagePath: "pages/settings/settings",

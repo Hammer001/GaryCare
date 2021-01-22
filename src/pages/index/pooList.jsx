@@ -1,50 +1,38 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, Button } from "@tarojs/components";
 import { AtList, AtListItem, AtDivider, AtButton, AtCheckbox } from "taro-ui";
-import moment from "moment";
-import EmptyComp from "../../component/EmptyComp";
 import { globalUrl } from "../../util/globalUrl";
+import EmptyComp from "../../component/EmptyComp";
 import _ from "lodash";
 import "./index.scss";
 
-const typeThumb = {
-  breast: globalUrl + "/breast.png",
-  powder: globalUrl + "/bottle_mini.png",
-  food: globalUrl + "/food.png"
-};
+const colorTagDot = [
+  { name: "灰白", type: "greywhite", dotImg: globalUrl + "/color_tag_1.png" },
+  { name: "绿色", type: "green", dotImg: globalUrl + "/color_tag_2.png" },
+  { name: "黄色", type: "yellow", dotImg: globalUrl + "/color_tag_3.png" },
+  { name: "褐色", type: "brown", dotImg: globalUrl + "/color_tag_4.png" },
+  { name: "黑色", type: "black", dotImg: globalUrl + "/color_tag_5.png" },
+  { name: "红色", type: "red", dotImg: globalUrl + "/color_tag_6.png" }
+];
 
-const typeName = {
-  breast: "母乳",
-  powder: "奶粉",
-  food: "辅食"
-};
-
-const FeedList = ({ feedData, nextFeed, selectedDay, today, batchDel }) => {
+const PooList = ({ pooData, selectedDay, today, batchDel }) => {
   const [mode, setMode] = useState(false);
   const [checkList, setCheckList] = useState([]);
 
-  // 切换日历，feedData数据变化，将mode切换回查看模式。
   useEffect(() => {
     setMode(false);
     setCheckList([]);
     return () => {};
-  }, [feedData]);
+  }, [pooData]);
 
-  /**
-   * 如果不是今天，不预计下顿时间
-   * 时间做排序
-   * 数组不符合条件不显示数据
-   * 用最新的时间计算下顿时间
-   */
   let checkOption = [];
-  let isToday = selectedDay === today ? true : false;
-  let newFeedData = null;
-  if (feedData && _.isArray(feedData) && _.size(feedData) > 0) {
-    newFeedData = feedData;
-    newFeedData.sort((a, b) => {
+  let newPooData = null;
+  if (pooData && _.isArray(pooData) && _.size(pooData) > 0) {
+    newPooData = pooData;
+    newPooData.sort((a, b) => {
       return a.time > b.time ? 1 : -1;
     });
-    checkOption = newFeedData.map(n => {
+    checkOption = newPooData.map(n => {
       return { label: n.time, value: n.key };
     });
   }
@@ -52,6 +40,16 @@ const FeedList = ({ feedData, nextFeed, selectedDay, today, batchDel }) => {
   function submit() {
     setMode(false);
     batchDel(checkList);
+  }
+
+  function renderColorDot(item) {
+    let newIndex = _.findIndex(colorTagDot, o => {
+      return o.name === item || o.type === item;
+    });
+
+    if (newIndex !== -1) {
+      return colorTagDot[newIndex].dotImg;
+    }
   }
 
   if (mode) {
@@ -73,37 +71,19 @@ const FeedList = ({ feedData, nextFeed, selectedDay, today, batchDel }) => {
       </>
     );
   } else {
-    if (newFeedData) {
-      //避免空数据，有数据的时候再计算时间
-      let newTimeStamp = selectedDay + " " + _.last(newFeedData)["time"];
-      let nextFeedTime = nextFeed
-        ? moment(newTimeStamp)
-            .add(nextFeed, "hours")
-            .calendar()
-        : "请先设置喂奶间隔";
-
+    if (newPooData) {
       return (
         <>
           <AtList>
-            {newFeedData.map(item => {
-              let newVolume = _.get(item, "volume", 0);
-
+            {newPooData.map(item => {
               return (
                 <AtListItem
                   title={item.time}
-                  note={newVolume !== 0 ? newVolume + "毫升" : null}
-                  extraText={typeName[item.type]}
-                  thumb={typeThumb[item.type]}
+                  thumb={renderColorDot(item.color)}
+                  extraText={item.shape}
                 />
               );
             })}
-            {isToday && (
-              <AtListItem
-                title={nextFeedTime}
-                disabled
-                extraText={"预计下顿时间"}
-              />
-            )}
           </AtList>
           <AtDivider lineColor="#f5f5f5">
             <View className="dividerButton" onClick={() => setMode(true)}>
@@ -122,4 +102,4 @@ const FeedList = ({ feedData, nextFeed, selectedDay, today, batchDel }) => {
   }
 };
 
-export default FeedList;
+export default PooList;

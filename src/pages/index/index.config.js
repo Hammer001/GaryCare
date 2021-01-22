@@ -1,6 +1,8 @@
 export default {
   navigationBarTitleText: 'Care',
   usingComponents: {
-    WeekSwiper: "../../component/WeekSwiper"
-  }
+    weekSwiper: "../../component/WeekSwiper"
+  },
+  enableShareAppMessage: true,
+  enableShareTimeline: true
 }

@@ -1,0 +1,22 @@
+@import "~taro-ui/dist/style/components/icon.scss";
+@import "~taro-ui/dist/style/components/card.scss";
+@import "~taro-ui/dist/style/components/timeline.scss";
+@import "~taro-ui/dist/style/components/flex.scss";
+@import "~taro-ui/dist/style/components/tag.scss";
+@import "~taro-ui/dist/style/components/divider.scss";
+
+.cardView {
+  margin-top: 30px;
+}
+
+.container {
+  background-color: #f7f7f7;
+}
+
+.tagContainer {
+  padding: 20px 30px 0px 30px;
+}
+
+.at-divider__content {
+  background-color: #f7f7f7;
+}

@@ -66,6 +66,14 @@
 .tabPanelView {
   padding-left: 25px;
   padding-right: 25px;
+//   min-height: 700px;
+}
+
+.noteData{
+    // css保留空格和换行符
+white-space: pre-wrap;
+// css保留换行符
+white-space: pre-line;
 }
 
 .at-tabs__header {
@@ -81,6 +89,6 @@
 .emptyContentView {
   height: 380px;
   display: flex;
-  justify-content: center; 
-  align-items: center; 
+  justify-content: center;
+  align-items: center;
 }

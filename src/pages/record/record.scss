@@ -5,6 +5,11 @@
 @import "~taro-ui/dist/style/components/icon.scss";
 @import "~taro-ui/dist/style/components/segmented-control.scss";
 @import "~taro-ui/dist/style/components/radio.scss";
+@import "~taro-ui/dist/style/components/grid.scss";
+@import "~taro-ui/dist/style/components/tag.scss";
+@import "~taro-ui/dist/style/components/flex.scss";
+@import "~taro-ui/dist/style/components/list.scss";
+@import "~taro-ui/dist/style/components/textarea.scss";
 
 .recordView {
   padding: 25px;
@@ -20,6 +25,51 @@
 }
 
 .segementComp {
-  width: 350px;
   margin: 0 auto;
+  border-top: 1px solid #f7f7f7;
+  border-bottom: 1px solid #f7f7f7;
+}
+
+.pooTag {
+  padding-top: 20px;
+  padding-bottom: 20px;
+  padding-left: 20px;
+  display: inline-flex;
+}
+
+.colorTagView {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.colorTag {
+  height: 60px;
+  text-align: center;
+}
+
+.color {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+
+.colorName {
+  font-size: 28px;
+  margin-top: 10px;
+  color: #6b6b6b;
+}
+
+.sleepTimeView {
+  // padding-top: 20px;
+  // padding-bottom: 20px;
+}
+
+.at-grid__flex .content-inner__text {
+  font-size: 28px;
+}
+
+.at-grid__flex .content-inner__img {
+  width: 55px;
+  height: 55px;
 }

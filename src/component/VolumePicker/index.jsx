@@ -39,7 +39,7 @@ const selectorData = {
 const renderKeys = {
   duration: "duration",
   volume: "volume",
-  volume_record: "volume"//volume_record使用volume的数据
+  volume_record: "volume" //volume_record使用volume的数据
 };
 
 /**
@@ -47,19 +47,28 @@ const renderKeys = {
  * 将所有的picker放到一个组件里使用，共用一个毫升和时间的数据
  */
 const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
-  const newKeys = renderKeys[keys]; //输入组件的keys，record页面中调用需做额外处理，需要返回另外的值
+  const newKeys = renderKeys[keys]; //通过组件的keys，record页面中调用需做额外处理，需要返回另外的值
+  //方便调用相同的数据
   const [selector, setSelector] = useState(selectorData[newKeys].data);
   const [checked, setChecked] = useState("");
+  const [custom, setCustom] = useState({});
 
   useEffect(() => {
-    let getKey = "gary" + "-" + newKeys;
     Taro.getStorage({
-      key: getKey,
+      key: "gary-custom",
       success: res => {
         const resData = _.get(res, "data", null);
-        setChecked(resData ? resData + selectorData[newKeys].name : "未选择");
-        if (resData && newKeys === "volume_record") { // record页面中输出defaultValue，点击‘现在喂’的时候可以存储数据
-          defaultValue(resData);
+        // console.log(resData);
+        if (resData) {
+          setCustom(resData);
+        }
+        setChecked(
+          resData ? resData[newKeys] + selectorData[newKeys].name : "未选择"
+        );
+        if (resData && keys === "volume_record") {
+          // !! keys===volume_record时候，是在record中使用的，需要判断props上面的keys
+          // record页面中输出defaultValue，点击‘现在喂’的时候可以存储数据
+          defaultValue(resData[newKeys]);
         }
       }
     });
@@ -69,17 +78,16 @@ const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
 
   function changePicker(e) {
     const index = Number(e.detail.value);
-    let getKey = "gary" + "-" + newKeys;
     let storeData;
 
     setChecked(selector[index]);
 
     if (keys === "volume") {
       storeData = (index + 1) * 10;
-      storeGlobalData(getKey, storeData);
+      storeGlobalData(keys, storeData);
     } else if (keys === "duration") {
       storeData = index + 1;
-      storeGlobalData(getKey, storeData);
+      storeGlobalData(keys, storeData);
     } else {
       storeData = (index + 1) * 10;
       afterSetSuccess(storeData); //只向上输出数据，不执行存储数据
@@ -87,9 +95,11 @@ const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
   }
 
   function storeGlobalData(key, data) {
+    let newData = custom;
+    newData[key] = data;
     Taro.setStorage({
-      key: key,
-      data: data,
+      key: "gary-custom",
+      data: newData,
       success: res => {
         Taro.showToast({
           title: "设置成功！",
