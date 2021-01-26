@@ -67,7 +67,9 @@ class RecordPage extends Component {
       },
       today: getToday(),
       segTab: 0,
-      browse: [0] //TODO： 浏览历史，是否可以填写不同分页的数据最后一起提交
+      browse: [0], //TODO： 浏览历史，是否可以填写不同分页的数据最后一起提交
+      buttonLoading: false,
+      nowBtnLoading: false
     };
   }
 
@@ -111,16 +113,33 @@ class RecordPage extends Component {
     });
   }
 
-  onSubmit = now => {
+  onSubmit = async now => {
+    if (now) {
+      this.setState({ nowBtnLoading: true });
+    } else {
+      this.setState({ buttonLoading: true });
+    }
     /**
      * 根据tab，实现不同条件的提交条件
      * 数据没有错误之后，找到对应的key值
      * 每个key值里面是数组，每个对象里面存储对应的数据，通过index更新整个数据
      * 最后提交，返回index页面
      */
+    const response = await Taro.request({
+      url: globalUrl + "/get/user/data",
+      method: "POST",
+      data: {
+        _id: _.get(this.props, "userData._id")
+      },
+      header: {
+        "content-type": "application/json"
+      }
+    });
+    // console.log("submit", res);
+    // 先从服务器获取最新数据，避免两个用户的时候数据冲突
     const { selectDay, garyData } = this.props;
     const { value, segTab } = this.state;
-    let newData = garyData || [];
+    let newData = _.get(response, "data.callback.data", []) || [];
     let dateIndex = findDateIndex(newData, selectDay);
     let isDataHasThisDay = dateIndex !== -1 ? true : false;
 
@@ -160,7 +179,7 @@ class RecordPage extends Component {
               volume: value["volumeValue"]
             };
             newData[dateIndex].feed.push(newPushValue);
-            this.storeDataAndReturn(newData);
+            this.handleStoreData(newData, selectDay, dateIndex, "feed");
           }
         }
         break;
@@ -183,7 +202,7 @@ class RecordPage extends Component {
               poo: true //统计页面用，合并数组后判断是否显示
             };
             newData[dateIndex].poo.push(newPushValue);
-            this.storeDataAndReturn(newData);
+            this.handleStoreData(newData, selectDay, dateIndex, "poo");
           }
         }
         break;
@@ -208,7 +227,7 @@ class RecordPage extends Component {
               end: _.join(value["end"], "/")
             };
             newData[dateIndex].sleep.push(newPushValue);
-            this.storeDataAndReturn(newData);
+            this.handleStoreData(newData, selectDay, dateIndex, "sleep");
           }
         }
         break;
@@ -237,7 +256,7 @@ class RecordPage extends Component {
               tempValue: tempValue
             };
             newData[dateIndex].temperture.push(newPushValue);
-            this.storeDataAndReturn(newData);
+            this.handleStoreData(newData, selectDay, dateIndex, "temperture");
           }
         }
         break;
@@ -252,7 +271,7 @@ class RecordPage extends Component {
           return;
         } else {
           newData[dateIndex].note = noteValue;
-          this.storeDataAndReturn(newData);
+          this.handleStoreData(newData, selectDay, dateIndex, "note");
         }
         break;
       default:
@@ -262,7 +281,31 @@ class RecordPage extends Component {
     console.log("修改过的数据", newData);
   };
 
-  storeDataAndReturn = data => {
+  handleStoreData = (data, selectDate, index, type) => {
+    // let localData = data;
+    // localData[index][type];
+    // if (_.get(this.props, "userData._id", null)) {
+    //   Taro.request({
+    //     url: globalUrl + "/get/" + type,
+    //     method: "POST",
+    //     data: {
+    //       _id: _.get(this.props, "userData._id"),
+    //       date: selectDate
+    //     },
+    //     header: {
+    //       "content-type": "application/json"
+    //     },
+    //     success: res => {
+    //       console.log("getTypeData", res);
+    //       let getData = _.get(res, "data.callback", []);
+    //       if (_.size(localData) !== _.size(getData)) {
+    //         this.storeDataAndReturn(getData)
+    //       }else{
+    //         this.storeDataAndReturn(localData)
+    //       }
+    //     }
+    //   });
+    // }
     Taro.setStorage({
       key: "gary-care",
       data: data,
@@ -273,9 +316,29 @@ class RecordPage extends Component {
         Taro.switchTab({
           url: "/pages/index/index"
         });
+
+        this.setState({
+          nowBtnLoading: false,
+          buttonLoading: false
+        });
       }
     });
   };
+
+  //   storeDataAndReturn=(data)=>{
+  //     Taro.setStorage({
+  //         key: "gary-care",
+  //         data: data,
+  //         success: res => {
+  //           // console.log(res);
+  //           this.props.changeUpdateStatus({ login: false, data: true });
+  //           this.handleShowToast("设置成功！", "success", 2000);
+  //           Taro.switchTab({
+  //             url: "/pages/index/index"
+  //           });
+  //         }
+  //       });
+  //   }
 
   handleShowToast = (text, icon, timer) => {
     Taro.showToast({
@@ -425,7 +488,7 @@ class RecordPage extends Component {
   };
 
   render() {
-    const { segTab, today } = this.state;
+    const { segTab, today, buttonLoading, nowBtnLoading } = this.state;
 
     return (
       <View className="recordView">
@@ -443,13 +506,18 @@ class RecordPage extends Component {
         {this.renderRecordType()}
 
         <View className="confirmView">
-          <AtButton type="primary" onClick={() => this.onSubmit()}>
+          <AtButton
+            type="primary"
+            onClick={() => this.onSubmit()}
+            loading={buttonLoading}
+          >
             确定
           </AtButton>
           <View style="margin-bottom:30rpx" />
           {segTab === 0 && (
             <AtButton
               onClick={() => this.onSubmit("now")}
+              loading={nowBtnLoading}
               disabled={today !== this.props.selectDay ? true : false}
             >
               现在喂
@@ -477,7 +545,8 @@ class RecordPage extends Component {
 const mapStateToProps = state => {
   return {
     selectDay: state.gary.selectDay,
-    garyData: state.gary.garyData
+    garyData: state.gary.garyData,
+    userData: state.gary.userData
   };
 };
 

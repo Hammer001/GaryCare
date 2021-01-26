@@ -1,11 +1,12 @@
 import React, { Component } from "react";
 import Taro from "@tarojs/taro";
-import { View, Text } from "@tarojs/components";
+import { View, Image,Text } from "@tarojs/components";
 import { AtForm, AtInput, AtButton } from "taro-ui";
 import { connect } from "react-redux";
 import { globalUrl } from "../../util/globalUrl";
 import { changeDataUpdateStatus, changeUserData } from "../../actions/gary";
 import _ from "lodash";
+import Logo from '../../asserts/GaryCareLogo2.png'
 import "./login.scss";
 
 class Login extends Component {
@@ -50,6 +51,11 @@ class Login extends Component {
     });
   }
   onSubmit() {
+    /**
+     * 登录逻辑：
+     * 服务器signin/signup接口，注册需要手机号和密码，登录则需要数据的_id，所以需要用手机号去查找到id。
+     * 找到后进行判断，符合条件进行登录或是注册。
+     */
     const { value, password, type, confirm } = this.state;
     const phoneReg = /^1[3456789]\d{9}$/;
     const regPhoneExp = new RegExp(phoneReg);
@@ -157,7 +163,10 @@ class Login extends Component {
     const { type } = this.state;
     return (
       <View className="loginPage">
-        <View className="logoView"></View>
+        <View className="logoView">
+            <Image src={Logo} className='logo'/>
+            <View className='logoTitle'>GaryCare小程序</View>
+        </View>
         <View className="formView">
           <View className="loginInput">
             <AtInput

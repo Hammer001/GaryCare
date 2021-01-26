@@ -18,13 +18,13 @@ class AboutPage extends Component {
         <View className="at-article__content">
           <View className="at-article__section">
             <View className="at-article__p">方便宝妈们记录未断奶宝宝的记录宝宝所需的日常</View>
-            <View className="at-article__p">这是文本段落。这是文本段落。</View>
-            <View className="at-article__h3">如有喜欢，可以请开发者喝杯咖啡</View>
+            <View className="at-article__p">IT宝爸的贡献</View>
+            {/* <View className="at-article__h3">如有喜欢，可以请开发者喝杯咖啡</View>
             <Image
               className="at-article__img"
               src="http://localhost:8080/wechat_pay.png"
               mode="widthFix"
-            />
+            /> */}
           </View>
         </View>
       </View>

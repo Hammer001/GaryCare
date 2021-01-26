@@ -9,10 +9,25 @@
 }
 
 .logoView {
-  background-color: #f7f7f7;
+  background-color: #6190e8;
   flex: 4;
   height: 400px;
+  text-align: center;
 }
+
+.logo{
+    width: 200px;
+    height: 200px;
+    margin-top: 60px;
+}
+
+.logoTitle{
+    font-size: 32px;
+    margin-top: 40px;
+    color: white;
+    font-weight: 600;
+}
+
 .formView {
   flex: 6;
   padding: 20px 50px 0px 50px;

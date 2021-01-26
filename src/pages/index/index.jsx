@@ -58,7 +58,8 @@ class Index extends Component {
       duration: null,
       actionOpen: false,
       markDate: [],
-      userId: null
+      userId: null,
+      refresh: false
     };
     this.today = getToday();
   }
@@ -155,7 +156,7 @@ class Index extends Component {
               "content-type": "application/json"
             },
             success: res => {
-              console.log(res);
+              console.log("index服务器更新数据返回", res);
             }
           });
         }
@@ -189,11 +190,11 @@ class Index extends Component {
     this.props.updateSelectDay(value);
   }
 
-  onLongPressCalendar({ value }) {
-    this.setState({ currentDay: value });
-    this.props.updateSelectDay(value);
-    this.handleActionSheet(true);
-  }
+  //   onLongPressCalendar({ value }) {
+  //     this.setState({ currentDay: value });
+  //     this.props.updateSelectDay(value);
+  //     this.handleActionSheet(true);
+  //   }
 
   goInput = type => {
     Taro.navigateTo({ url: "/pages/record/record" + "?type=" + type });
@@ -236,6 +237,36 @@ class Index extends Component {
     console.log(e.detail);
   }
 
+  handleRefreshing = e => {
+    this.setState({ refresh: true });
+    if (_.get(this.props, "userData._id", null)) {
+      Taro.request({
+        url: globalUrl + "/get/user/data",
+        method: "POST",
+        data: {
+          _id: _.get(this.props, "userData._id")
+        },
+        header: {
+          "content-type": "application/json"
+        },
+        success: res => {
+        //   console.log("refreshData", res);
+          let getData = _.get(res, "data.callback.data", []);
+          this.setState({ refresh: false });
+          Taro.setStorage({
+            key: "gary-care",
+            data: getData
+          });
+          this.setState({
+            feedData: getData
+          });
+
+          this.props.updateGaryData(getData);
+        }
+      });
+    }
+  };
+
   render() {
     const {
       tab,
@@ -259,7 +290,12 @@ class Index extends Component {
     // console.log("diff3", diff3);
     // console.log("markDate", markDate);
     return (
-      <View className="container">
+      <ScrollView
+        className="container"
+        refresherEnabled
+        refresherTriggered={this.state.refresh}
+        onRefresherRefresh={e => this.handleRefreshing(e)}
+      >
         {/* <ScrollView scrollY onScroll={this.onScroll}  scrollWithAnimation style='height:100vh'> */}
         <View className="calendarView">
           <AtCalendar
@@ -358,7 +394,7 @@ class Index extends Component {
           </AtActionSheetItem>
         </AtActionSheet> */}
         {/* </ScrollView> */}
-      </View>
+      </ScrollView>
     );
   }
 }
