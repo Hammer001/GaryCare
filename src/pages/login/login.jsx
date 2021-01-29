@@ -1,12 +1,17 @@
 import React, { Component } from "react";
 import Taro from "@tarojs/taro";
-import { View, Image,Text } from "@tarojs/components";
+import { View, Image, Text } from "@tarojs/components";
 import { AtForm, AtInput, AtButton } from "taro-ui";
 import { connect } from "react-redux";
 import { globalUrl } from "../../util/globalUrl";
-import { changeDataUpdateStatus, changeUserData } from "../../actions/gary";
+import {
+  changeDataUpdateStatus,
+  changeUserData,
+  setGaryData
+} from "../../actions/gary";
+import { newRequest } from "../../util/requestUtil";
+import { showToast } from "../../util/toastUtil";
 import _ from "lodash";
-import Logo from '../../asserts/GaryCareLogo2.png'
 import "./login.scss";
 
 class Login extends Component {
@@ -26,11 +31,13 @@ class Login extends Component {
       success: res => {
         const userData = _.get(res, "data", null);
         if (userData && userData._id) {
-          this.setState({
-            userInfo: userData
-          });
+        //   this.setState({
+        //     userInfo: userData
+        //   });
           this.jumpToIndex();
+          //this.props.changeUpdateStatus({ login: true, data: false });
           this.props.changeUserData(userData);
+          this.props.updateGaryData(_.get(userData, "data", []))
         }
       }
     });
@@ -60,41 +67,35 @@ class Login extends Component {
     const phoneReg = /^1[3456789]\d{9}$/;
     const regPhoneExp = new RegExp(phoneReg);
     if (password === "") {
-      this.handleShowToast("请输入密码", "none", 3000);
+      showToast("请输入密码", "none", 3000);
       return;
     } else if (!regPhoneExp.test(value)) {
-      this.handleShowToast("请输入正确的手机号", "none", 3000);
+      showToast("请输入正确的手机号", "none", 3000);
       return;
     } else if (type === "register" && password !== confirm) {
-      this.handleShowToast("两次输入的密码不相同", "none", 3000);
+      showToast("两次输入的密码不相同", "none", 3000);
     } else {
-      Taro.request({
-        url: globalUrl + "/findPhone",
-        method: "POST",
-        data: {
-          phone: value
-        },
-        header: {
-          "content-type": "application/json" // 默认值
-        },
-        success: res => {
-          console.log("getPhone返回", res);
-          const getPhoneData = _.get(res, "data", null);
-          if (getPhoneData) {
-            let newData = {
-              phone: value,
-              pass: password
-            };
-            if (!getPhoneData.usable && type === "login") {
-              newData._id = getPhoneData._id;
-              this.handleLoginAndRegister("/signin", newData);
-            } else if (getPhoneData.usable && type === "register") {
-              this.handleLoginAndRegister("/signup", newData);
-            } else if (getPhoneData.usable && type === "login") {
-              this.handleShowToast("账户还未注册", "none", 3000);
-            } else if (!getPhoneData.usable && type === "register") {
-              this.handleShowToast("账户已注册", "none", 3000);
-            }
+      let params = {
+        phone: value
+      };
+
+      newRequest("/findPhone", params).then(data => {
+        console.log("getPhone返回", data);
+        const getPhoneData = data;
+        if (getPhoneData) {
+          let newData = {
+            phone: value,
+            pass: password
+          };
+          if (!getPhoneData.usable && type === "login") {
+            newData._id = getPhoneData._id;
+            this.handleLoginAndRegister("/signin", newData);
+          } else if (getPhoneData.usable && type === "register") {
+            this.handleLoginAndRegister("/signup", newData);
+          } else if (getPhoneData.usable && type === "login") {
+            showToast("账户还未注册", "none", 3000);
+          } else if (!getPhoneData.usable && type === "register") {
+            showToast("账户已注册", "none", 3000);
           }
         }
       });
@@ -102,25 +103,17 @@ class Login extends Component {
   }
 
   handleLoginAndRegister = (url, postData) => {
-    Taro.request({
-      url: globalUrl + url,
-      method: "POST",
-      data: postData,
-      header: {
-        "content-type": "application/json" // 默认值
-      },
-      success: response => {
-        console.log("登录返回", response);
-        if (_.get(response, "data.error", null)) {
-          this.handleShowToast(_.get(response, "data.msg"), "none", 3000);
-        } else {
-          this.storeUserData(response);
-        }
+    newRequest(url, postData).then(data => {
+      console.log("登录返回", data);
+      if (_.get(data, "error", null)) {
+        showToast(_.get(data, "msg"), "none", 3000);
+      } else {
+        this.storeUserData(data);
       }
     });
   };
   storeUserData = response => {
-    const setUserData = _.get(response, "data", null);
+    const setUserData = response;
     if (setUserData) {
       Taro.setStorage({
         key: "user",
@@ -128,15 +121,23 @@ class Login extends Component {
         success: res => {
           console.log("存储user成功", setUserData);
           this.props.changeUserData(setUserData);
+        },
+        fail: res => {
+          showToast("存储失败！", "error", 3000);
+          return;
         }
       });
 
       Taro.setStorage({
         key: "gary-care",
-        data: _.get(setUserData, "data", [])
+        data: _.get(setUserData, "data", []),
+        fail: res => {
+          showToast("存储失败！", "error", 3000);
+        }
       });
 
-      this.props.changeUpdateStatus({ login: true, data: true });
+      this.props.updateGaryData(_.get(setUserData, "data", []))
+      //this.props.changeUpdateStatus({ login: true, data: true });
       this.jumpToIndex();
     }
   };
@@ -149,13 +150,6 @@ class Login extends Component {
       password: ""
     });
   }
-  handleShowToast = (text, icon, timer) => {
-    Taro.showToast({
-      title: text,
-      icon: icon,
-      duration: timer
-    });
-  };
   handleSwitchType = type => {
     this.setState({ type, password: "", confirm: "" });
   };
@@ -164,8 +158,8 @@ class Login extends Component {
     return (
       <View className="loginPage">
         <View className="logoView">
-            <Image src={Logo} className='logo'/>
-            <View className='logoTitle'>GaryCare小程序</View>
+          <Image src={globalUrl + "/GaryCareLogo2.png"} className="logo" />
+          <View className="logoTitle">GaryCare小程序</View>
         </View>
         <View className="formView">
           <View className="loginInput">
@@ -235,6 +229,9 @@ const mapDispatchToProps = dispatch => {
     },
     changeUserData: status => {
       dispatch(changeUserData(status));
+    },
+    updateGaryData: data => {
+      dispatch(setGaryData(data));
     }
   };
 };

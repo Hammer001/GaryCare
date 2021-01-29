@@ -22,24 +22,34 @@ function tempLevel(temp) {
     return levelObject["high"];
   } else if (34 < floatTemp && floatTemp < 36) {
     return levelObject["low"];
-  } else if (floatTemp > 39 || floatTemp < 34) {
+  } else if (floatTemp > 39) {
+    return levelObject["abnormal"];
+  } else if (floatTemp <= 34) {
     return levelObject["abnormal"];
   } else {
     return levelObject["normal"];
   }
 }
 
-const TempertureList = ({ tempData }) => {
+const TempertureList = ({ tempData, onItemClick }) => {
   if (tempData && _.isArray(tempData) && _.size(tempData) > 0) {
     return (
       <AtList>
-        {tempData.map(item => {
-          const status = tempLevel(item["tempValue"]);
+        {tempData.map((item, i) => {
+          const newTempValue = _.get(item, "tempValue", null)
+            ? item.tempValue
+            : item.temperture;
+          const status = tempLevel(newTempValue);
+          const newTime = _.get(item, "time", null)
+            ? item.time
+            : _.get(item, "tempTime", "");
           return (
             <AtListItem
-              title={item["tempValue"] + "℃"}
+              title={newTempValue + "℃"}
               extraText={_.get(status, "title", "")}
               thumb={_.get(status, "icon")}
+              note={newTime}
+              onClick={() => onItemClick(i,item)}
             />
           );
         })}

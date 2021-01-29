@@ -4,5 +4,7 @@ export default {
     weekSwiper: "../../component/WeekSwiper"
   },
   enableShareAppMessage: true,
-  enableShareTimeline: true
+  enableShareTimeline: true,
+  enablePullDownRefresh: true,
+  backgroundTextStyle: "dark" 
 }

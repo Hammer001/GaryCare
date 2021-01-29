@@ -8,12 +8,16 @@ import {
   AtAvatar,
   AtIcon,
   AtModal,
-  AtModalHeader,
   AtModalContent,
   AtModalAction
 } from "taro-ui";
 import { getToday } from "../../util/timeUtil";
-import { changeDataUpdateStatus } from "../../actions/gary";
+import {
+  setGaryData,
+  setSelectDay,
+  changeDataUpdateStatus,
+  changeUserData
+} from "../../actions/gary";
 import { findDateIndex } from "../../util/findDateIndex";
 import VolumePicker from "../../component/VolumePicker";
 import { globalUrl } from "../../util/globalUrl";
@@ -90,19 +94,21 @@ class Settings extends Component {
     Taro.removeStorage({
       key: "gary-care",
       success: function(res) {
-        console.log("登出清楚gary-care");
+        console.log("登出清除gary-care");
       }
     });
 
-    Taro.setStorage({
+    Taro.removeStorage({
       key: "user",
-      data: {},
       success: res => {
-        Taro.redirectTo({ url: "/pages/login/login" });
-        this.props.changeUpdateStatus({ login: false, data: false })
+        //redux清空数据
+        console.log("登出清除user");
       }
     });
-
+    this.props.changeUserData({});
+    this.props.updateGaryData([]);
+    //this.props.changeUpdateStatus({ login: false, data: false });
+    Taro.redirectTo({ url: "/pages/login/login" });
   };
 
   handleClose = () => {
@@ -168,8 +174,8 @@ class Settings extends Component {
             <VolumePicker
               keys="duration"
               title="选择喂奶间隔"
-              afterSetSuccess={status =>
-                this.props.changeUpdateStatus({ login: false, data: true })
+              afterSetSuccess={status =>{}
+                //this.props.changeUpdateStatus({ login: false, data: true })
               }
             />
             <VolumePicker
@@ -245,6 +251,12 @@ const mapDispatchToProps = dispatch => {
   return {
     changeUpdateStatus: status => {
       dispatch(changeDataUpdateStatus(status));
+    },
+    updateGaryData: data => {
+      dispatch(setGaryData(data));
+    },
+    changeUserData: status => {
+      dispatch(changeUserData(status));
     }
   };
 };

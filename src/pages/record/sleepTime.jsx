@@ -12,7 +12,7 @@ const SleepTime = ({ name, currentDay, time, title, daySwitch, onValue }) => {
     sleepEnd: moment(currentDay).format("YYYY-MM-DD")
   };
 
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(time || "");
   const [compValue, setCompValue] = useState([dayOption[name], time]);
   // [YYYY-MM-DD, 00:00] 数据结构，0位是日期，1位是时间
   function onInputChange(value) {

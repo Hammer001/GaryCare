@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { View, Picker, Text } from "@tarojs/components";
 import { AtInput, AtButton, AtRadio, AtGrid, AtTextarea } from "taro-ui";
 import { getTimeNow, getToday } from "../../util/timeUtil";
-import { changeDataUpdateStatus } from "../../actions/gary";
+import { changeDataUpdateStatus, setGaryData } from "../../actions/gary";
 import { findDateIndex } from "../../util/findDateIndex";
 import TitleComp from "../../component/TitleComp";
 import VolumePicker from "../../component/VolumePicker";
@@ -12,6 +12,8 @@ import PooTag from "./pooTag";
 import ColorTag from "./colorTag";
 import SleepTime from "./sleepTime";
 import { globalUrl } from "../../util/globalUrl";
+import { showToast } from "../../util/toastUtil";
+import { newRequest } from "../../util/requestUtil";
 import _ from "lodash";
 import "./record.scss";
 
@@ -63,35 +65,91 @@ class RecordPage extends Component {
         tempTime: "",
         start: ["", ""],
         end: ["", ""],
-        note: ""
+        note: "",
+        feedTime: ""
       },
       today: getToday(),
       segTab: 0,
       browse: [0], //TODO： 浏览历史，是否可以填写不同分页的数据最后一起提交
       buttonLoading: false,
-      nowBtnLoading: false
+      nowBtnLoading: false,
+      editMode: { edit: false, key: null }
     };
+    this.timer;
   }
 
   componentDidShow(options) {
     const { garyData, selectDay } = this.props;
-    const noteType = _.get(getCurrentInstance(), "router.params.type", null);
-    // console.log("getCurrentInstance", noteType);
+    const routeData = getCurrentInstance();
+    const routeType = _.get(routeData, "router.params.type", null); //从哪个tab跳转过来
+    const timeTitle =
+      selectDay === this.state.today ? selectDay + " " + "今天" : selectDay;
+    console.log("getCurrentInstance", routeData);
     // note编辑模式，路由参数相同时跳转到笔记tab，并修改数据为上次的笔记内容
-    if (noteType === "editnote") {
-      let dayIndex = _.findIndex(garyData, o => o.date === selectDay);
+    if (routeType && _.size(routeType) > 1) {
+      // routeType=1的时候是tab切换的数值，并不是用户要编辑
+      const getIndexFromRoute = _.get(
+        routeData,
+        "router.params.tabIndex",
+        null
+      );
+      const getIndexDataFromRoute = _.get(
+        routeData,
+        "router.params.dataIndex",
+        null
+      );
+      const dayIndex = _.findIndex(garyData, o => o.date === selectDay);
       let newValue = this.state.value;
-      newValue.note = dayIndex !== -1 ? garyData[dayIndex].note : "";
-      this.setState({
-        value: newValue,
-        segTab: 4
-      });
+
+      if (routeType === "note") {
+        newValue.note = dayIndex !== -1 ? garyData[dayIndex].note : "";
+        this.setState({
+          value: newValue,
+          segTab: 4
+        });
+      } else {
+        let newItem = _.get(
+          garyData,
+          `[${dayIndex}][${routeType}][${getIndexDataFromRoute}]`,
+          null
+        );
+        if (newItem && _.isObject(newItem)) {
+          //通过item中相同的key值快速赋值value的值，呈现出要编辑的内容
+          Object.keys(newItem).map(n => {
+            if (n === "start" || n === "end") {
+              newValue[n] = _.split(newItem[n], "/");
+            } else {
+              newValue[n] = newItem[n];
+            }
+          });
+          //   console.log("newItem", newItem);
+          //   console.log("newValue", newValue);
+          this.setState({
+            value: newValue,
+            segTab: Number(getIndexFromRoute),
+            editMode: { edit: true, key: newItem.key }
+          });
+        }
+      }
     } else {
-      let getIndexTabNumber = noteType ? Number(noteType) : 0;
+      // 只是点击添加按钮，则首页在哪个tab上停留，进入时就显示哪个tab的内容
+      let getIndexTabNumber = routeType ? Number(routeType) : 0;
       this.setState({
         segTab: getIndexTabNumber
       });
     }
+
+    Taro.setNavigationBarTitle({
+      title: timeTitle
+    });
+  }
+
+  componentWillUnmount() {
+    this.timer && clearTimeout(this.timer);
+  }
+
+  componentDidHide() {
+    this.timer && clearTimeout(this.timer);
   }
 
   handleChange(type, value) {
@@ -114,11 +172,6 @@ class RecordPage extends Component {
   }
 
   onSubmit = async now => {
-    if (now) {
-      this.setState({ nowBtnLoading: true });
-    } else {
-      this.setState({ buttonLoading: true });
-    }
     /**
      * 根据tab，实现不同条件的提交条件
      * 数据没有错误之后，找到对应的key值
@@ -138,11 +191,12 @@ class RecordPage extends Component {
     // console.log("submit", res);
     // 先从服务器获取最新数据，避免两个用户的时候数据冲突
     const { selectDay, garyData } = this.props;
-    const { value, segTab } = this.state;
+    const { value, segTab, editMode } = this.state;
     let newData = _.get(response, "data.callback.data", []) || [];
     let dateIndex = findDateIndex(newData, selectDay);
     let isDataHasThisDay = dateIndex !== -1 ? true : false;
-
+    const isEditMode = _.get(editMode, "edit");
+    const editKey = _.get(editMode, "key");
     // 判断是否有对应时间，没有说明肯定是个新的日期，可以直接进行创建
     if (!isDataHasThisDay) {
       let temp = {
@@ -158,51 +212,75 @@ class RecordPage extends Component {
     }
 
     const timeReg = /^(20|21|22|23|[0-1]\d):[0-5]\d$/;
+    const feedTimeTemp = /^\d+(\.\d+)?$/;
     const timeExp = new RegExp(timeReg);
+    const feedTimeExp = new RegExp(feedTimeTemp);
     switch (segTab) {
       case 0: // 喂奶
         const newTime = now ? getTimeNow() : value["time"];
 
         if (newTime === "") {
-          this.handleShowToast("请输入时间", "none", 3000);
+          showToast("请输入时间", "none", 3000);
           return;
         } else if (!timeExp.test(newTime)) {
-          this.handleShowToast("时间格式错误！00:00", "none", 3000);
+          showToast("时间格式错误！00:00", "none", 3000);
           return;
+        } else if (
+          value["feedTime"] !== "" &&
+          !feedTimeExp.test(value["feedTime"])
+        ) {
+          showToast("亲喂时间格式错误！", "none", 3000);
         } else {
           //第二种可能就是创建过数据，所以数据不可能为空，可以直接进行push数据
-          if (_.isArray(_.get(newData[dateIndex], "feed", null))) {
+          let typeData = _.get(newData[dateIndex], "feed", null);
+
+          if (_.isArray(typeData)) {
             let newPushValue = {
               key: new Date().getTime(), // 毫秒级时间戳
               time: newTime,
               type: value["feedType"],
               volume: value["volumeValue"]
             };
-            newData[dateIndex].feed.push(newPushValue);
-            this.handleStoreData(newData, selectDay, dateIndex, "feed");
+            if (isEditMode) {
+              // 编辑模式下，只修改数据，不再push新数据
+              let keyIndex = _.findIndex(typeData, o => o.key === editKey); //根据key值找到数据
+              if (editKey) newPushValue.key = editKey;
+              if (keyIndex !== -1)
+                newData[dateIndex].feed[keyIndex] = newPushValue;
+            } else {
+              newData[dateIndex].feed.push(newPushValue);
+            }
+            this.handleStoreData(newData, now);
           }
         }
         break;
       case 1: // 排便
         const pootimeValue = value["pootime"];
         if (pootimeValue === "") {
-          this.handleShowToast("请输入时间", "none", 3000);
+          showToast("请输入时间", "none", 3000);
           return;
         } else if (!timeExp.test(pootimeValue)) {
-          this.handleShowToast("时间格式错误！00:00", "none", 3000);
+          showToast("时间格式错误！00:00", "none", 3000);
           return;
         } else {
-          //第二种可能就是创建过数据，所以数据不可能为空，可以直接进行push数据
-          if (_.isArray(_.get(newData[dateIndex], "poo", null))) {
+          let typeData = _.get(newData[dateIndex], "poo", null);
+          if (_.isArray(typeData)) {
             let newPushValue = {
               key: new Date().getTime(),
-              time: pootimeValue,
+              pootime: pootimeValue,
               shape: value["shape"],
               color: value["color"],
               poo: true //统计页面用，合并数组后判断是否显示
             };
-            newData[dateIndex].poo.push(newPushValue);
-            this.handleStoreData(newData, selectDay, dateIndex, "poo");
+            if (isEditMode) {
+              let keyIndex = _.findIndex(typeData, o => o.key === editKey);
+              if (editKey) newPushValue.key = editKey;
+              if (keyIndex !== -1)
+                newData[dateIndex].poo[keyIndex] = newPushValue;
+            } else {
+              newData[dateIndex].poo.push(newPushValue);
+            }
+            this.handleStoreData(newData, now);
           }
         }
         break;
@@ -210,24 +288,31 @@ class RecordPage extends Component {
         const startTimeValue = value["start"][1];
         const endTimeValue = value["end"][1];
         if (startTimeValue === "" || endTimeValue === "") {
-          this.handleShowToast("请输入时间", "none", 3000);
+          showToast("请输入时间", "none", 3000);
           return;
         } else if (
           !timeExp.test(startTimeValue) ||
           !timeExp.test(endTimeValue)
         ) {
-          this.handleShowToast("时间格式错误！00:00", "none", 3000);
+          showToast("时间格式错误！00:00", "none", 3000);
           return;
         } else {
-          //第二种可能就是创建过数据，所以数据不可能为空，可以直接进行push数据
-          if (_.isArray(_.get(newData[dateIndex], "sleep", null))) {
+          let typeData = _.get(newData[dateIndex], "sleep", null);
+          if (_.isArray(typeData)) {
             let newPushValue = {
               key: new Date().getTime(),
               start: _.join(value["start"], "/"),
               end: _.join(value["end"], "/")
             };
-            newData[dateIndex].sleep.push(newPushValue);
-            this.handleStoreData(newData, selectDay, dateIndex, "sleep");
+            if (isEditMode) {
+              let keyIndex = _.findIndex(typeData, o => o.key === editKey);
+              if (editKey) newPushValue.key = editKey;
+              if (keyIndex !== -1)
+                newData[dateIndex].sleep[keyIndex] = newPushValue;
+            } else {
+              newData[dateIndex].sleep.push(newPushValue);
+            }
+            this.handleStoreData(newData, now);
           }
         }
         break;
@@ -237,26 +322,34 @@ class RecordPage extends Component {
         const tempTimeValue = value["tempTime"];
         let tempValue = value["temperture"];
         if (tempTimeValue === "") {
-          this.handleShowToast("请输入时间", "none", 3000);
+          showToast("请输入时间", "none", 3000);
           return;
         } else if (!timeExp.test(tempTimeValue)) {
-          this.handleShowToast("时间格式错误！00:00", "none", 3000);
+          showToast("时间格式错误！00:00", "none", 3000);
           return;
         } else if (tempValue === "") {
-          this.handleShowToast("请输入温度", "none", 3000);
+          showToast("请输入温度", "none", 3000);
           return;
         } else if (!regTempExp.test(tempValue)) {
-          this.handleShowToast("请输入正确的温度", "none", 3000);
+          showToast("请输入正确的温度", "none", 3000);
           return;
         } else {
-          if (_.isArray(_.get(newData[dateIndex], "temperture", null))) {
+          let typeData = _.get(newData[dateIndex], "temperture", null);
+          if (_.isArray(typeData)) {
             let newPushValue = {
               key: new Date().getTime(),
-              time: tempTimeValue,
-              tempValue: tempValue
+              tempTime: tempTimeValue,
+              temperture: tempValue
             };
-            newData[dateIndex].temperture.push(newPushValue);
-            this.handleStoreData(newData, selectDay, dateIndex, "temperture");
+            if (isEditMode) {
+              let keyIndex = _.findIndex(typeData, o => o.key === editKey);
+              if (editKey) newPushValue.key = editKey;
+              if (keyIndex !== -1)
+                newData[dateIndex].temperture[keyIndex] = newPushValue;
+            } else {
+              newData[dateIndex].temperture.push(newPushValue);
+            }
+            this.handleStoreData(newData, now);
           }
         }
         break;
@@ -267,11 +360,11 @@ class RecordPage extends Component {
           !noteValue ||
           !/[^\s]/.test(noteValue)
         ) {
-          this.handleShowToast("请输入内容", "none", 3000);
+          showToast("请输入内容", "none", 3000);
           return;
         } else {
           newData[dateIndex].note = noteValue;
-          this.handleStoreData(newData, selectDay, dateIndex, "note");
+          this.handleStoreData(newData, now);
         }
         break;
       default:
@@ -281,74 +374,42 @@ class RecordPage extends Component {
     console.log("修改过的数据", newData);
   };
 
-  handleStoreData = (data, selectDate, index, type) => {
-    // let localData = data;
-    // localData[index][type];
-    // if (_.get(this.props, "userData._id", null)) {
-    //   Taro.request({
-    //     url: globalUrl + "/get/" + type,
-    //     method: "POST",
-    //     data: {
-    //       _id: _.get(this.props, "userData._id"),
-    //       date: selectDate
-    //     },
-    //     header: {
-    //       "content-type": "application/json"
-    //     },
-    //     success: res => {
-    //       console.log("getTypeData", res);
-    //       let getData = _.get(res, "data.callback", []);
-    //       if (_.size(localData) !== _.size(getData)) {
-    //         this.storeDataAndReturn(getData)
-    //       }else{
-    //         this.storeDataAndReturn(localData)
-    //       }
-    //     }
-    //   });
-    // }
-    Taro.setStorage({
-      key: "gary-care",
-      data: data,
-      success: res => {
-        // console.log(res);
-        this.props.changeUpdateStatus({ login: false, data: true });
-        this.handleShowToast("设置成功！", "success", 2000);
-        Taro.switchTab({
-          url: "/pages/index/index"
-        });
+  handleStoreData = (data, now) => {
+    if (now) {
+      this.setState({ nowBtnLoading: true });
+    } else {
+      this.setState({ buttonLoading: true });
+    }
+    // console.log("newData", data);
 
-        this.setState({
-          nowBtnLoading: false,
-          buttonLoading: false
+    this.timer = setTimeout(() => {
+      if (_.get(this.props, "userData._id", null)) {
+        let params = {
+          _id: this.props.userData._id,
+          data: data
+        };
+        newRequest("/update/user/data", params).then(value => {
+          let isError = _.get(value, "error");
+          if (!isError) {
+            this.props.updateGaryData(data);
+            //this.props.changeUpdateStatus({ login: false, data: true });
+            showToast("记录成功！", "success", 2000);
+
+            this.setState({
+              nowBtnLoading: false,
+              buttonLoading: false
+            });
+
+            Taro.switchTab({
+              url: "/pages/index/index"
+            });
+          }
         });
       }
-    });
+    }, 500);
   };
 
-  //   storeDataAndReturn=(data)=>{
-  //     Taro.setStorage({
-  //         key: "gary-care",
-  //         data: data,
-  //         success: res => {
-  //           // console.log(res);
-  //           this.props.changeUpdateStatus({ login: false, data: true });
-  //           this.handleShowToast("设置成功！", "success", 2000);
-  //           Taro.switchTab({
-  //             url: "/pages/index/index"
-  //           });
-  //         }
-  //       });
-  //   }
-
-  handleShowToast = (text, icon, timer) => {
-    Taro.showToast({
-      title: text,
-      icon: icon,
-      duration: timer
-    });
-  };
-
-  renderRecordType = () => {
+  renderRecordType = isCurrentDay => {
     /**
      * 根据tab渲染不同的输入模块
      * 每个模块输出都由value控制，输出set value[key值]，每个模块的value获取value的key值
@@ -386,6 +447,21 @@ class RecordPage extends Component {
               </>
             )}
 
+            {/* {value["feedType"] === "breast" && ( // 母乳喂养时显示输入时间
+              <>
+                <TitleComp title="亲喂时间" />
+                <AtInput
+                  name="feedTime"
+                  type="number"
+                  placeholder=""
+                  value={value["feedTime"]}
+                  onChange={value => this.handleChange("feedTime", value)}
+                >
+                  分钟
+                </AtInput>
+              </>
+            )} */}
+
             <TitleComp title="喂养方式" />
             <AtRadio
               options={feedType}
@@ -406,9 +482,13 @@ class RecordPage extends Component {
               value={value["pootime"]}
               onChange={value => this.handleChange("pootime", value)}
             >
-              <View onClick={() => this.handleChange("pootime", getTimeNow())}>
-                现在
-              </View>
+              {isCurrentDay && (
+                <View
+                  onClick={() => this.handleChange("pootime", getTimeNow())}
+                >
+                  现在
+                </View>
+              )}
             </AtInput>
 
             <TitleComp title="性状" />
@@ -451,9 +531,13 @@ class RecordPage extends Component {
               value={value["tempTime"]}
               onChange={value => this.handleChange("tempTime", value)}
             >
-              <View onClick={() => this.handleChange("tempTime", getTimeNow())}>
-                现在
-              </View>
+              {isCurrentDay && (
+                <View
+                  onClick={() => this.handleChange("tempTime", getTimeNow())}
+                >
+                  现在
+                </View>
+              )}
             </AtInput>
             <TitleComp title="记录体温" />
             <AtInput
@@ -488,8 +572,14 @@ class RecordPage extends Component {
   };
 
   render() {
-    const { segTab, today, buttonLoading, nowBtnLoading } = this.state;
-
+    const {
+      segTab,
+      today,
+      buttonLoading,
+      nowBtnLoading,
+      editMode
+    } = this.state;
+    const isCurrentDay = today === this.props.selectDay ? true : false;
     return (
       <View className="recordView">
         <View className="segmentView">
@@ -503,22 +593,23 @@ class RecordPage extends Component {
           </View>
         </View>
 
-        {this.renderRecordType()}
+        {this.renderRecordType(isCurrentDay)}
 
         <View className="confirmView">
           <AtButton
             type="primary"
             onClick={() => this.onSubmit()}
             loading={buttonLoading}
+            disabled={nowBtnLoading}
           >
-            确定
+            {_.get(editMode, "edit") ? "确认编辑" : "确定"}
           </AtButton>
           <View style="margin-bottom:30rpx" />
-          {segTab === 0 && (
+          {segTab === 0 && !_.get(editMode, "edit") && (
             <AtButton
               onClick={() => this.onSubmit("now")}
               loading={nowBtnLoading}
-              disabled={today !== this.props.selectDay ? true : false}
+              disabled={!isCurrentDay}
             >
               现在喂
             </AtButton>
@@ -554,6 +645,9 @@ const mapDispatchToProps = dispatch => {
   return {
     changeUpdateStatus: status => {
       dispatch(changeDataUpdateStatus(status));
+    },
+    updateGaryData: data => {
+      dispatch(setGaryData(data));
     }
   };
 };

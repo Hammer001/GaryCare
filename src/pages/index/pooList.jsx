@@ -15,31 +15,13 @@ const colorTagDot = [
   { name: "红色", type: "red", dotImg: globalUrl + "/color_tag_6.png" }
 ];
 
-const PooList = ({ pooData, selectedDay, today, batchDel }) => {
-  const [mode, setMode] = useState(false);
-  const [checkList, setCheckList] = useState([]);
-
-  useEffect(() => {
-    setMode(false);
-    setCheckList([]);
-    return () => {};
-  }, [pooData]);
-
-  let checkOption = [];
+const PooList = ({ pooData, onItemClick, batchDel }) => {
   let newPooData = null;
   if (pooData && _.isArray(pooData) && _.size(pooData) > 0) {
     newPooData = pooData;
     newPooData.sort((a, b) => {
-      return a.time > b.time ? 1 : -1;
+      return a.pootime > b.pootime ? 1 : -1;
     });
-    checkOption = newPooData.map(n => {
-      return { label: n.time, value: n.key };
-    });
-  }
-
-  function submit() {
-    setMode(false);
-    batchDel(checkList);
   }
 
   function renderColorDot(item) {
@@ -52,53 +34,32 @@ const PooList = ({ pooData, selectedDay, today, batchDel }) => {
     }
   }
 
-  if (mode) {
+  if (newPooData) {
     return (
       <>
-        <AtCheckbox
-          options={checkOption}
-          selectedList={checkList}
-          onChange={value => setCheckList(value)}
-        />
-
-        <View className="delButtonView">
-          <View className="submitButton">
-            <AtButton type="secondary" onClick={() => submit()}>
-              确定
-            </AtButton>
-          </View>
-        </View>
+        <AtList>
+          {newPooData.map((item, i) => {
+            const newTime = _.get(item, "time", null)
+              ? item.time
+              : _.get(item,'pootime','');
+            return (
+              <AtListItem
+                title={newTime}
+                thumb={renderColorDot(item.color)}
+                extraText={item.shape}
+                onClick={() => onItemClick(i,item)}
+              />
+            );
+          })}
+        </AtList>
       </>
     );
   } else {
-    if (newPooData) {
-      return (
-        <>
-          <AtList>
-            {newPooData.map(item => {
-              return (
-                <AtListItem
-                  title={item.time}
-                  thumb={renderColorDot(item.color)}
-                  extraText={item.shape}
-                />
-              );
-            })}
-          </AtList>
-          <AtDivider lineColor="#f5f5f5">
-            <View className="dividerButton" onClick={() => setMode(true)}>
-              <Text style="color:#FF4949">点击删除</Text>
-            </View>
-          </AtDivider>
-        </>
-      );
-    } else {
-      return (
-        <View className="emptyContentView">
-          <EmptyComp />
-        </View>
-      );
-    }
+    return (
+      <View className="emptyContentView">
+        <EmptyComp />
+      </View>
+    );
   }
 };
 

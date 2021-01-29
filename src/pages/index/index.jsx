@@ -10,7 +10,8 @@ import {
   AtButton,
   AtActionSheet,
   AtActionSheetItem,
-  AtIcon
+  AtIcon,
+  AtActivityIndicator
 } from "taro-ui";
 import { getToday } from "../../util/timeUtil";
 import {
@@ -21,12 +22,14 @@ import {
 } from "../../actions/gary";
 import { findDateIndex } from "../../util/findDateIndex";
 import { showToast } from "../../util/toastUtil";
+import moment from "moment";
 import FeedList from "./feed";
 import TempertureList from "./temperture";
 import NoteTab from "./noteTab";
 import PooList from "./pooList";
 import SleepList from "./sleepList";
-import { globalUrl } from "../../util/globalUrl";
+import { newRequest } from "../../util/requestUtil";
+import { isEmptyString } from "../../util/isEmptyString";
 import _ from "lodash";
 import "./index.scss";
 /**
@@ -34,14 +37,6 @@ import "./index.scss";
  * gary-care:
  * [{date:'2021-01-14',feed:[{key:0,time:12:00,type:'',volume:150}],temperture:[37,36],note:''}]
  */
-
-function isEmptyString(value) {
-  if (value == "undefined" || !value || !/[^\s]/.test(value)) {
-    return true;
-  } else {
-    return false;
-  }
-}
 
 class Index extends Component {
   config = {
@@ -59,9 +54,12 @@ class Index extends Component {
       actionOpen: false,
       markDate: [],
       userId: null,
-      refresh: false
+      refresh: false,
+      editActon: {},
+      pageLoading: false
     };
     this.today = getToday();
+    this.timer;
   }
 
   onShareAppMessage(res) {
@@ -81,21 +79,67 @@ class Index extends Component {
   }
 
   componentDidShow(options) {
-    const { isUpdate } = this.props;
+    const { userData, garyData } = this.props;
     // console.log("index：进入小程序", options);
-    if (_.get(isUpdate, "data")) {
-      //每次进入该页面，检查是否需要更新
-      this.updateFromStorage();
+
+    if (_.get(userData, "_id", null)) {
+      this.setState({
+        pageLoading: true
+      });
+
+      let params = {
+        _id: userData._id
+      };
+      newRequest("/get/user/data", params).then(data => {
+        console.log("didShow获取");
+        let getData = _.get(data, "callback.data", []);
+        Taro.setStorage({
+          key: "gary-care",
+          data: getData
+        });
+
+        this.setState({
+          feedData: getData,
+          pageLoading: false
+        });
+
+        this.props.updateGaryData(getData);
+      });
     }
 
-    if (_.get(isUpdate, "login")) {
-      this.initialUserEnterPage();
-    }
+    Taro.getStorage({
+      key: "gary-custom",
+      success: res => {
+        const getData = _.get(res, "data", null);
+        // console.log(getData);
+
+        if (getData) {
+          // volumePicker传出来的格式是'3小时'，不再是单一数字了，需要转换
+          let getDurationNumber = _.split(_.get(getData, "duration"), "")[0];
+          let formatDuration = _.isNumber(Number(getDurationNumber))
+            ? Number(getDurationNumber)
+            : 0;
+          //   console.log("formatDuration", formatDuration);
+
+          this.setState({
+            duration: formatDuration
+          });
+        }
+      }
+    });
   }
 
   componentDidMount() {
     this.initialUserEnterPage();
-    this.updateFromStorage();
+    // this.updateFromStorage();
+  }
+
+  componentWillUnmount() {
+    this.timer && clearTimeout(this.timer);
+  }
+
+  componentDidHide() {
+    this.timer && clearTimeout(this.timer);
   }
 
   initialUserEnterPage() {
@@ -106,78 +150,6 @@ class Index extends Component {
     });
     //this.props.changeUserLoginStatus(false); //用户重新登录完进行将状态改为false
   }
-
-  //   getUserId = () => {
-  //     Taro.getStorage({
-  //       key: "user",
-  //       success: res => {
-  //         const userData = _.get(res, "data", null);
-  //         if (userData && userData._id) {
-  //           this.setState({
-  //             userId: userData._id
-  //           });
-  //           this.props.changeUserData(userData);
-  //         }
-  //       }
-  //     });
-  //   };
-
-  updateFromStorage = () => {
-    // 更新care数据，以及喂奶间隔
-    Taro.getStorage({
-      key: "gary-care",
-      success: res => {
-        let getData = _.get(res, "data", null);
-        getData && // 删除空数据，或者把曾经某一天的数据全删了，也会清空当天的记录。
-          _.remove(getData, r => {
-            return (
-              _.size(r.feed) === 0 &&
-              _.size(r.temperture) === 0 &&
-              isEmptyString(r.note)
-            );
-          });
-
-        // console.log("newMarkArray", newMarkArray);
-        this.setState({
-          feedData: getData
-        });
-
-        this.props.updateGaryData(getData);
-
-        if (_.get(this.props, "userData._id", null)) {
-          Taro.request({
-            url: globalUrl + "/update/user/data",
-            method: "POST",
-            data: {
-              _id: _.get(this.props, "userData._id"),
-              data: getData
-            },
-            header: {
-              "content-type": "application/json"
-            },
-            success: res => {
-              console.log("index服务器更新数据返回", res);
-            }
-          });
-        }
-      }
-    });
-
-    Taro.getStorage({
-      key: "gary-custom",
-      success: res => {
-        const getData = _.get(res, "data", null);
-        // console.log(getData);
-        if (getData) {
-          this.setState({
-            duration: getData["duration"]
-          });
-        }
-      }
-    });
-
-    this.props.changeUpdateStatus({ login: false, data: false }); //更新完数据将更新状态修改为false
-  };
 
   onTabChange(value) {
     this.setState({
@@ -193,78 +165,116 @@ class Index extends Component {
   //   onLongPressCalendar({ value }) {
   //     this.setState({ currentDay: value });
   //     this.props.updateSelectDay(value);
-  //     this.handleActionSheet(true);
+  //     this.setState(true);
   //   }
-
-  goInput = type => {
-    Taro.navigateTo({ url: "/pages/record/record" + "?type=" + type });
-  };
-
-  handleBatchDelete = (list, index, key) => {
-    //批量删除
-    const { feedData, currentDay } = this.state;
-    let newFeedData = feedData; // 代表当前日期的所有数据，根据key值找到对应的对象数据
-    let feedList = _.get(feedData[index], key);
-    if (_.isArray(list) && _.size(list) > 0) {
-      list.map(item => {
-        _.remove(feedList, r => r.key === item);
-      });
-
-      newFeedData[index].feed = feedList;
-
-      Taro.setStorage({
-        key: "gary-care",
-        data: newFeedData,
-        success: res => {
-          //   console.log(res);
-          this.updateFromStorage();
-          showToast("删除成功！", "success", 2000);
-        }
-      });
-    }
-  };
-
-  handleActionSheet = status => {
-    if (status === 1) {
-      Taro.navigateTo({ url: "/pages/note/note" });
-      this.setState({ actionOpen: false });
-    } else {
-      this.setState({ actionOpen: status });
-    }
-  };
 
   onScroll(e) {
     console.log(e.detail);
   }
 
-  handleRefreshing = e => {
-    this.setState({ refresh: true });
-    if (_.get(this.props, "userData._id", null)) {
-      Taro.request({
-        url: globalUrl + "/get/user/data",
-        method: "POST",
-        data: {
-          _id: _.get(this.props, "userData._id")
-        },
-        header: {
-          "content-type": "application/json"
-        },
-        success: res => {
-        //   console.log("refreshData", res);
-          let getData = _.get(res, "data.callback.data", []);
-          this.setState({ refresh: false });
+  onPullDownRefresh() {
+    Taro.showNavigationBarLoading();
+
+    this.timer = setTimeout(() => {
+      if (_.get(this.props, "userData._id", null)) {
+        let params = {
+          _id: this.props.userData._id
+        };
+        newRequest("/get/user/data", params).then(data => {
+          console.log("刷新获取");
+          let getData = _.get(data, "callback.data", []);
           Taro.setStorage({
             key: "gary-care",
             data: getData
           });
+
           this.setState({
             feedData: getData
           });
 
           this.props.updateGaryData(getData);
-        }
+        });
+      }
+      Taro.stopPullDownRefresh();
+      Taro.hideNavigationBarLoading();
+    }, 500);
+  }
+
+  goInput = (type, index, dataIndex) => {
+    const tabIndex = _.isNumber(index) ? "&tabIndex=" + index : ""; //跳转后显示那个tab的数据
+    const newDataIndex = _.isNumber(dataIndex) ? "&dataIndex=" + dataIndex : ""; // 所点击的item所在的index
+    const newUrl = "?type=" + type + tabIndex + newDataIndex;
+    Taro.navigateTo({
+      url: "/pages/record/record" + newUrl
+    });
+  };
+
+  handleItemDelete = dateIndex => {
+    /**
+     * 删除功能
+     * 2.0.3 取消批量删除功能，点击不同的item可以删除或者跳转
+     * 统一通过editAction进行数据管理
+     */
+    const { feedData, editActon } = this.state;
+    let newFeedData = feedData; // 代表当前日期的所有数据，根据key值找到对应的对象数据
+    let getType = _.get(editActon, "type");
+    let getCurrentItem = _.get(editActon, "itemData", null);
+    let currentList = _.get(feedData[dateIndex], getType);
+
+    if (getCurrentItem) {
+      this.setState({
+        pageLoading: false
       });
+
+      _.remove(currentList, r => r.key === getCurrentItem.key);
+
+      newFeedData[dateIndex][getType] = currentList;
+
+      if (_.get(this.props, "userData._id", null)) {
+        let params = {
+          _id: this.props.userData._id,
+          data: newFeedData
+        };
+        newRequest("/update/user/data", params).then(data => {
+          let isError = _.get(data, "error");
+          if (!isError) {
+            this.props.updateGaryData(newFeedData);
+            this.handleActionSheet(false, "", 0, 0, null);
+            showToast("删除成功！", "success", 2000);
+          }
+
+          this.setState({
+            pageLoading: false
+          });
+        });
+        Taro.setStorage({
+          key: "gary-care",
+          data: newFeedData
+        });
+      }
     }
+  };
+
+  handleItemEdit = () => {
+    const { editActon } = this.state;
+    /**
+     * 将点击列表的item作为集中管理，每次点击会更新editAction
+     * 保存item的所在的数据type，tab所在的index值，item在list里面的index，还有item的数据
+     * 符合条件进行跳转
+     */
+    if (
+      _.get(editActon, "type") !== "" &&
+      _.get(editActon, "visible") === true
+    ) {
+      this.goInput(editActon.type, editActon.index, editActon.dataIndex);
+      this.handleActionSheet(false, "", 0, 0, null);
+    }
+  };
+
+  handleActionSheet = (visible, type, index, dataIndex, itemData) => {
+    this.setState({
+      editActon: { visible, type, index, dataIndex, itemData }
+    });
   };
 
   render() {
@@ -274,7 +284,9 @@ class Index extends Component {
       currentDay,
       duration,
       actionOpen,
-      markDate
+      markDate,
+      editActon,
+      pageLoading
     } = this.state;
     const tabList = [
       { title: "喂奶" },
@@ -285,16 +297,19 @@ class Index extends Component {
     ];
     const dateIndex = findDateIndex(feedData, currentDay);
     const currentData = dateIndex !== -1 ? feedData[dateIndex] : null;
-    // diff3 记录今天与选择的天数的差距，0是当天，负数是未来的天数，正数是过去的天数
-    // const diff3 = moment(this.today).diff(moment(currentDay), "days");
+    // diffDay 记录今天与选择的天数的差距，0是当天，负数是未来的天数，正数是过去的天数
+    const diffDay = moment(this.today).diff(moment(currentDay), "days");
     // console.log("diff3", diff3);
     // console.log("markDate", markDate);
     return (
       <ScrollView
         className="container"
-        refresherEnabled
-        refresherTriggered={this.state.refresh}
-        onRefresherRefresh={e => this.handleRefreshing(e)}
+        scrollY
+        scrollIntoView="tabView"
+        enableBackToTop={true}
+        // refresherEnabled
+        // refresherTriggered={this.state.refresh}
+        // onRefresherRefresh={e => this.handleRefreshing(e)}
       >
         {/* <ScrollView scrollY onScroll={this.onScroll}  scrollWithAnimation style='height:100vh'> */}
         <View className="calendarView">
@@ -313,6 +328,7 @@ class Index extends Component {
               size="small"
               circle
               onClick={() => this.goInput(tab)}
+              disabled={diffDay < 0 ? true : false}
             >
               <AtIcon value="add-circle" size="16"></AtIcon>
               <Text style="marign-left:7rpx;"> 记录宝宝的日常</Text>
@@ -320,7 +336,10 @@ class Index extends Component {
           </View>
         </View>
 
-        <View className="tabView">
+        {/* <AtActivityIndicator mode="center" isOpened={pageLoading} size={35}>
+        </AtActivityIndicator> */}
+
+        <View id="tabView" className="tabView">
           <AtTabs
             current={tab}
             scroll
@@ -334,8 +353,8 @@ class Index extends Component {
                   nextFeed={duration}
                   selectedDay={currentDay}
                   today={this.today}
-                  batchDel={list =>
-                    this.handleBatchDelete(list, dateIndex, "feed")
+                  onItemClick={(dataIndex, itemData) =>
+                    this.handleActionSheet(true, "feed", 0, dataIndex, itemData)
                   }
                 />
               </View>
@@ -346,8 +365,8 @@ class Index extends Component {
                   pooData={_.get(currentData, "poo", "")}
                   selectedDay={currentDay}
                   today={this.today}
-                  batchDel={list =>
-                    this.handleBatchDelete(list, dateIndex, "poo")
+                  onItemClick={(dataIndex, itemData) =>
+                    this.handleActionSheet(true, "poo", 1, dataIndex, itemData)
                   }
                 />
               </View>
@@ -358,8 +377,14 @@ class Index extends Component {
                   sleepList={_.get(currentData, "sleep", "")}
                   selectedDay={currentDay}
                   today={this.today}
-                  batchDel={list =>
-                    this.handleBatchDelete(list, dateIndex, "sleep")
+                  onItemClick={(dataIndex, itemData) =>
+                    this.handleActionSheet(
+                      true,
+                      "sleep",
+                      2,
+                      dataIndex,
+                      itemData
+                    )
                   }
                 />
               </View>
@@ -368,6 +393,15 @@ class Index extends Component {
               <View className="tabPanelView">
                 <TempertureList
                   tempData={_.get(currentData, "temperture", null)}
+                  onItemClick={(dataIndex, itemData) =>
+                    this.handleActionSheet(
+                      true,
+                      "temperture",
+                      3,
+                      dataIndex,
+                      itemData
+                    )
+                  }
                 />
               </View>
             </AtTabsPane>
@@ -375,7 +409,7 @@ class Index extends Component {
               <View className="tabPanelView">
                 <NoteTab
                   noteData={_.get(currentData, "note", "")}
-                  goEdit={() => this.goInput("editnote")}
+                  goEdit={() => this.goInput("note", 4, 0)}
                   isEmptyContent={isEmptyString(_.get(currentData, "note", ""))}
                 />
               </View>
@@ -383,17 +417,19 @@ class Index extends Component {
           </AtTabs>
         </View>
 
-        {/* <AtActionSheet
-          isOpened={actionOpen}
+        <AtActionSheet
+          isOpened={_.get(editActon, "visible", false)}
           cancelText="取消"
-          onCancel={() => this.handleActionSheet(false)}
-          onClose={() => this.handleActionSheet(false)}
+          onCancel={() => this.handleActionSheet(false, "", 0, 0, null)}
+          onClose={() => this.handleActionSheet(false, "", 0, 0, null)}
         >
-          <AtActionSheetItem onClick={() => this.handleActionSheet(1)}>
-            星标笔记
+          <AtActionSheetItem onClick={() => this.handleItemEdit()}>
+            编辑
           </AtActionSheetItem>
-        </AtActionSheet> */}
-        {/* </ScrollView> */}
+          <AtActionSheetItem onClick={() => this.handleItemDelete(dateIndex)}>
+            <Text style="color:#E93B3D">删除</Text>
+          </AtActionSheetItem>
+        </AtActionSheet>
       </ScrollView>
     );
   }

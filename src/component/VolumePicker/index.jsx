@@ -2,8 +2,13 @@ import React, { useState, useEffect } from "react";
 import Taro from "@tarojs/taro";
 import { View, Picker, Text } from "@tarojs/components";
 import { AtList, AtListItem } from "taro-ui";
+import _ from "lodash";
 import "../component.scss";
 
+const volumeArray = Array(20).toString().split(',').map(function (item, index) {
+    let number = (index + 1) * 10;
+    return number + '毫升';
+});
 const selectorData = {
   duration: {
     name: "小时",
@@ -11,28 +16,11 @@ const selectorData = {
   },
   volume: {
     name: "毫升",
-    data: [
-      10,
-      20,
-      30,
-      40,
-      50,
-      60,
-      70,
-      80,
-      90,
-      100,
-      110,
-      120,
-      130,
-      140,
-      150,
-      160,
-      170,
-      180,
-      190,
-      200
-    ].map(n => n + "毫升")
+    data: volumeArray
+  },
+  volume_record: {
+    name: "毫升",
+    data: ['亲喂',...volumeArray]
   }
 };
 
@@ -49,7 +37,7 @@ const renderKeys = {
 const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
   const newKeys = renderKeys[keys]; //通过组件的keys，record页面中调用需做额外处理，需要返回另外的值
   //方便调用相同的数据
-  const [selector, setSelector] = useState(selectorData[newKeys].data);
+  const [selector, setSelector] = useState(selectorData[keys].data);
   const [checked, setChecked] = useState("");
   const [custom, setCustom] = useState({});
 
@@ -63,7 +51,7 @@ const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
           setCustom(resData);
         }
         setChecked(
-          resData ? resData[newKeys] + selectorData[newKeys].name : "未选择"
+          resData ? resData[newKeys] : "未选择"
         );
         if (resData && keys === "volume_record") {
           // !! keys===volume_record时候，是在record中使用的，需要判断props上面的keys
@@ -81,15 +69,13 @@ const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
     let storeData;
 
     setChecked(selector[index]);
+    storeData = selector[index];
 
     if (keys === "volume") {
-      storeData = (index + 1) * 10;
       storeGlobalData(keys, storeData);
     } else if (keys === "duration") {
-      storeData = index + 1;
       storeGlobalData(keys, storeData);
     } else {
-      storeData = (index + 1) * 10;
       afterSetSuccess(storeData); //只向上输出数据，不执行存储数据
     }
   }
