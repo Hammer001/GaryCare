@@ -5,10 +5,13 @@ import { AtList, AtListItem } from "taro-ui";
 import _ from "lodash";
 import "../component.scss";
 
-const volumeArray = Array(20).toString().split(',').map(function (item, index) {
+const volumeArray = Array(20)
+  .toString()
+  .split(",")
+  .map(function(item, index) {
     let number = (index + 1) * 10;
-    return number + '毫升';
-});
+    return number + "毫升";
+  });
 const selectorData = {
   duration: {
     name: "小时",
@@ -20,7 +23,7 @@ const selectorData = {
   },
   volume_record: {
     name: "毫升",
-    data: ['亲喂',...volumeArray]
+    data: ["亲喂", ...volumeArray]
   }
 };
 
@@ -34,7 +37,14 @@ const renderKeys = {
  * Picker组件：setting页面和record页面使用
  * 将所有的picker放到一个组件里使用，共用一个毫升和时间的数据
  */
-const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
+const VolumePicker = ({
+  keys,
+  title,
+  glbCustom,
+  afterSetSuccess,
+  defaultValue,
+  updateGlobalData
+}) => {
   const newKeys = renderKeys[keys]; //通过组件的keys，record页面中调用需做额外处理，需要返回另外的值
   //方便调用相同的数据
   const [selector, setSelector] = useState(selectorData[keys].data);
@@ -42,24 +52,19 @@ const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
   const [custom, setCustom] = useState({});
 
   useEffect(() => {
-    Taro.getStorage({
-      key: "gary-custom",
-      success: res => {
-        const resData = _.get(res, "data", null);
-        // console.log(resData);
-        if (resData) {
-          setCustom(resData);
-        }
-        setChecked(
-          resData ? resData[newKeys] : "未选择"
-        );
-        if (resData && keys === "volume_record") {
-          // !! keys===volume_record时候，是在record中使用的，需要判断props上面的keys
-          // record页面中输出defaultValue，点击‘现在喂’的时候可以存储数据
-          defaultValue(resData[newKeys]);
-        }
-      }
-    });
+    // console.log(resData);
+    /**
+     * 2.0.8 全局数据维护，不再使用storage存储
+     */
+    if (glbCustom) {
+      setCustom(glbCustom);
+    }
+    setChecked(glbCustom ? glbCustom[newKeys] : "未选择");
+    if (glbCustom && keys === "volume_record") {
+      // !! keys===volume_record时候，是在record中使用的，需要判断props上面的keys
+      // record页面中输出defaultValue，点击‘现在喂’的时候可以存储数据
+      defaultValue(glbCustom[newKeys]);
+    }
 
     return () => {};
   }, []);
@@ -83,18 +88,8 @@ const VolumePicker = ({ keys, title, afterSetSuccess, defaultValue }) => {
   function storeGlobalData(key, data) {
     let newData = custom;
     newData[key] = data;
-    Taro.setStorage({
-      key: "gary-custom",
-      data: newData,
-      success: res => {
-        Taro.showToast({
-          title: "设置成功！",
-          icon: "success",
-          duration: 2000
-        });
-        afterSetSuccess(true);
-      }
-    });
+
+    updateGlobalData(newData);
   }
 
   return (

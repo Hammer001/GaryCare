@@ -6,7 +6,7 @@ import { AtCard, AtTimeline, AtDivider } from "taro-ui";
 import moment from "moment";
 import TitleComp from "../../component/TitleComp";
 // import Charts from "../../component/Charts";
-import TagHeader from "./tagHeader";
+import TagHeader from "../../component/TagHeader";
 import { globalUrl } from "../../util/globalUrl";
 import _ from "lodash";
 import "./analysis.scss";
@@ -46,7 +46,7 @@ class Analysis extends Component {
         _.isArray(g.poo) && g.poo.map(p => (p.time = p.pootime)); // 遍历将不同名称的时间统一为time
         _.isArray(g.temperture) && g.temperture.map(t => (t.time = t.tempTime));
         g.extractSleep = [];
-        if (gDate === timeCache.date) {
+        if (gDate === timeCache.date) { //【cache】: 当前日期gDate等于cache的日期，将数据加入extractSleep，数据会加入到前一天的数据中
           g.extractSleep = [...timeCache.cache];
           timeCache.cache = [];
         }
@@ -69,8 +69,8 @@ class Analysis extends Component {
             if (extraStartDate[0] === gDate) {
               g.extractSleep.push(startObj);
             } else {
-              timeCache.date = extraStartDate[0];
-              timeCache.cache.push(startObj);
+              timeCache.date = extraStartDate[0]; // 如果该条数据不等于gDate，将它保存在cache里面
+              timeCache.cache.push(startObj); // 下次再遍历的时候可以，可以执行【cache】
             }
             if (extraEndDate[0] === gDate) {
               g.extractSleep.push(endObj);
@@ -84,7 +84,7 @@ class Analysis extends Component {
       });
       // 将数据增加时间戳字段，并且排序，方便下面进行筛选
       convertTimeData.sort((a, b) => {
-        return a.timeStamp > b.timeStamp ? 1 : -1;
+        return a.timeStamp > b.timeStamp ? -1 : 1;
       });
 
       console.log("convertTimeData", convertTimeData);
@@ -105,14 +105,19 @@ class Analysis extends Component {
       });
     }
     return (
-      //   <WebView
-      //     src="https://alphaworkout.z23.web.core.windows.net/#/login"
-      //     onMessage={this.handleMessage}
-      //   />
       <ScrollView scrollY scrollWithAnimation className="container">
         {/* <Charts /> */}
 
-        <TagHeader tagChange={value => this.setState({ timeRange: value })} />
+        <TagHeader
+          size="normal"
+          page="analysis"
+          tagChange={value => this.setState({ timeRange: value })}
+          tagData={[
+            { key: 0, keyName: "all", text: "全部", active: true },
+            { key: 1, keyName: "weeks", text: "近一周", active: false },
+            { key: 2, keyName: "month", text: "近一月", active: false }
+          ]}
+        />
 
         {newConvertData.map(item => {
           let newItem = [];
@@ -121,6 +126,9 @@ class Analysis extends Component {
           let feedCount = 0;
           let minCount = 0;
           let hourCount = 0;
+          let isLastDay = false;
+          let lastDayCount = "";
+          let newTime;
           if (item.feed && item.poo && item.temperture && item.extractSleep) {
             newItem = _.concat(
               item.feed,
@@ -159,43 +167,78 @@ class Analysis extends Component {
               obj.title = f.time;
               obj.content = [f.name];
               obj.color = "blue";
-
-              let fStart = _.replace(f.start, "/", " ");
-              let fEnd = _.replace(f.end, "/", " ");
-              let diffHours = moment(fStart).diff(moment(fEnd), "hours");
-              let diffMin = moment(fStart).diff(moment(fEnd), "minute");
-              if (Math.abs(diffHours) < 1) {
-                minCount = minCount + diffMin;
-              } else {
-                hourCount = hourCount + diffHours;
-              }
             }
 
             return obj;
           });
 
+          _.isArray(item.sleep) && // 计算睡眠时长
+            item.sleep.map(s => {
+              /**
+               * 计算小时和分钟数，如果少于1小时，显示分钟
+               * 如果大于1小时则显示小时+分钟，分钟用余数表示
+               */
+              let startDate = _.split(s.start, "/")[0];
+              let endDate = _.split(s.end, "/")[0];
+              let sStart = _.replace(s.start, "/", " ");
+              let sEnd = _.replace(s.end, "/", " ");
+              let diffDay = Math.abs(
+                moment(startDate).diff(moment(endDate), "day")
+              );
+              let diffHours = Math.abs(
+                moment(sStart).diff(moment(sEnd), "hours")
+              );
+              let diffMin = Math.abs(
+                moment(sStart).diff(moment(sEnd), "minute")
+              );
+              if (diffDay === 1) {
+                isLastDay = true;
+                lastDayCount = diffHours + "小时" + (diffMin % 60) + "分钟";
+              } else {
+                minCount = minCount + diffMin;
+                hourCount = hourCount + diffHours;
+              }
+            });
+
+          if (hourCount > 0) {
+            newTime = hourCount + "小时" + (minCount % 60) + "分钟";
+          } else {
+            newTime = minCount + "分钟";
+          }
+
           rightComp = (
             <View className="at-col rightContainer">
               {feedCount !== 0 && (
                 <View className="rightComp">
-                  <View className="countContent">喂养次数</View>
-                  <View className="countText">{feedCount}</View>
+                  <View className="countContent">喂养次数:</View>
+                  <View className="countText">{feedCount}次</View>
                 </View>
               )}
 
               {pooCount !== 0 && (
                 <View className="rightComp">
-                  <View className="countContent">排便次数</View>
-                  <View className="countText">{pooCount}</View>
+                  <View className="countContent">排便次数:</View>
+                  <View className="countText">{pooCount}次</View>
                 </View>
               )}
 
-              {/* {hourCount !== 0 || minCount!==0 ? (
+              {minCount > 0 || hourCount > 0 ? (
                 <View className="rightComp">
-                  <View className="countContent">睡眠时长</View>
-                  <View className="countText">{pooCount}</View>
+                  <View className="countContent">今日睡眠时长:</View>
+                  <View className="countText" style="font-size:45rpx">
+                    {newTime}
+                  </View>
                 </View>
-              ):null} */}
+              ) : null}
+
+              {isLastDay ? (
+                <View className="rightComp">
+                  <View className="countContent">昨晚睡眠时长:</View>
+                  <View className="countText" style="font-size:45rpx">
+                    {lastDayCount}
+                  </View>
+                </View>
+              ) : null}
             </View>
           );
 

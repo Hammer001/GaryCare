@@ -21,7 +21,8 @@ import {
 import { findDateIndex } from "../../util/findDateIndex";
 import VolumePicker from "../../component/VolumePicker";
 import { globalUrl } from "../../util/globalUrl";
-import TitleComp from "../../component/TitleComp";
+import { newRequest } from "../../util/requestUtil";
+import { showToast } from "../../util/toastUtil";
 import _ from "lodash";
 import "./settings.scss";
 
@@ -43,7 +44,7 @@ class Settings extends Component {
     return {
       title: "GaryCare小程序",
       path: "/pages/login/login",
-      // imageUrl: "/images/aikepler-logo.jpeg",
+      imageUrl: globalUrl + "/GaryCareLogo2.png",
       success: function(res) {
         // 转发成功
         console.log("转发成功", res);
@@ -115,6 +116,26 @@ class Settings extends Component {
     this.setState({ visible: false });
   };
 
+  updateCustomData = customData => {
+    /**
+     * 2.0.8 版本修改
+     * 将gary-custom存储的数据放在user数据里面
+     * 小程序内不再用storage存储的方式报错数据，index中每次获取数据时更新全局数据
+     */
+    if (_.get(this.props, "userData._id", null)) {
+      let params = {
+        _id: this.props.userData._id,
+        custom: customData
+      };
+      newRequest("/update/user/custom", params).then(value => {
+        let isError = _.get(value, "error");
+        if (!isError) {
+          showToast("设置成功！", "success", 2000);
+        }
+      });
+    }
+  };
+
   render() {
     const { currentData } = this.state;
     const timeTitle = this.props.selectDay === this.today ? "  今天" : "";
@@ -174,14 +195,16 @@ class Settings extends Component {
             <VolumePicker
               keys="duration"
               title="选择喂奶间隔"
-              afterSetSuccess={status =>{}
-                //this.props.changeUpdateStatus({ login: false, data: true })
-              }
+              glbCustom={this.props.glbCustom}
+              afterSetSuccess={status => {}}
+              updateGlobalData={value => this.updateCustomData(value)}
             />
             <VolumePicker
               keys="volume"
               title="选择常用喂奶量"
+              glbCustom={this.props.glbCustom}
               afterSetSuccess={status => {}}
+              updateGlobalData={value => this.updateCustomData(value)}
             />
           </View>
 
@@ -243,7 +266,8 @@ const mapStateToProps = state => {
   return {
     selectDay: state.gary.selectDay,
     garyData: state.gary.garyData,
-    userData: state.gary.userData
+    userData: state.gary.userData,
+    glbCustom: state.gary.globalCustom
   };
 };
 

@@ -31,8 +31,8 @@ const FeedList = ({
   nextFeed,
   selectedDay,
   today,
-  batchDel,
-  onItemClick
+  onItemClick,
+  compLoading,
 }) => {
   /**
    * 如果不是今天，不预计下顿时间
@@ -87,7 +87,7 @@ const FeedList = ({
   } else {
     return (
       <View className="emptyContentView">
-        <EmptyComp />
+        <EmptyComp loading={compLoading}/>
       </View>
     );
   }

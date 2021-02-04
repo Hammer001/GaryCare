@@ -1,0 +1,15 @@
+@import "~taro-ui/dist/style/components/activity-indicator.scss";
+@import "~taro-ui/dist/style/components/loading.scss";
+
+.textStyle {
+  font-size: 24px;
+  color: #78a4fa;
+  display: block;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.emptyImg {
+  width: 200px;
+  height: 200px;
+}

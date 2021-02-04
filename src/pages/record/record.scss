@@ -10,6 +10,7 @@
 @import "~taro-ui/dist/style/components/flex.scss";
 @import "~taro-ui/dist/style/components/list.scss";
 @import "~taro-ui/dist/style/components/textarea.scss";
+@import "~taro-ui/dist/style/components/divider.scss";
 
 .recordView {
   padding: 25px;
@@ -61,8 +62,18 @@
 }
 
 .sleepTimeView {
-  // padding-top: 20px;
-  // padding-bottom: 20px;
+  height: 50px;
+  line-height: 50px;
+  padding-left: 20px;
+}
+
+.toItem {
+  text-align: center;
+  color: #9e9e9e;
+}
+
+.timeItem {
+  font-weight: 600;
 }
 
 .at-grid__flex .content-inner__text {

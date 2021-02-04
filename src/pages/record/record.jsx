@@ -2,7 +2,16 @@ import React, { Component } from "react";
 import Taro, { getCurrentInstance } from "@tarojs/taro";
 import { connect } from "react-redux";
 import { View, Picker, Text } from "@tarojs/components";
-import { AtInput, AtButton, AtRadio, AtGrid, AtTextarea } from "taro-ui";
+import {
+  AtInput,
+  AtButton,
+  AtRadio,
+  AtGrid,
+  AtTextarea,
+  AtList,
+  AtListItem,
+  AtDivider
+} from "taro-ui";
 import { getTimeNow, getToday } from "../../util/timeUtil";
 import { changeDataUpdateStatus, setGaryData } from "../../actions/gary";
 import { findDateIndex } from "../../util/findDateIndex";
@@ -11,6 +20,7 @@ import VolumePicker from "../../component/VolumePicker";
 import PooTag from "./pooTag";
 import ColorTag from "./colorTag";
 import SleepTime from "./sleepTime";
+import TagHeader from "../../component/TagHeader";
 import { globalUrl } from "../../util/globalUrl";
 import { showToast } from "../../util/toastUtil";
 import { newRequest } from "../../util/requestUtil";
@@ -49,26 +59,27 @@ const recordType = [
     key: "note"
   }
 ];
-
+const get_now = getTimeNow();
 class RecordPage extends Component {
   constructor() {
     super(...arguments);
     this.state = {
       value: {
-        time: "",
-        pootime: "",
+        time: get_now,
+        pootime: get_now,
         feedType: feedType[0].value,
         temperture: "",
         shape: "",
         color: "",
         volumeValue: 0,
-        tempTime: "",
+        tempTime: get_now,
         start: ["", ""],
         end: ["", ""],
         note: "",
         feedTime: ""
       },
       today: getToday(),
+      sleepTimeMode: "lastnight",
       segTab: 0,
       browse: [0], //TODO： 浏览历史，是否可以填写不同分页的数据最后一起提交
       buttonLoading: false,
@@ -163,12 +174,18 @@ class RecordPage extends Component {
   }
 
   segementChange(value) {
+    const { editMode } = this.state;
     // let newBroser = this.state.browse;
     // newBroser.push(value);
-    this.setState({
-      segTab: value
-      //   browse: newBroser
-    });
+    if (editMode.edit) {
+      //编辑模式下不可切换tab
+      showToast("编辑数据时不可以切换哟！", "none", 3000);
+    } else {
+      this.setState({
+        segTab: value
+        //   browse: newBroser
+      });
+    }
   }
 
   onSubmit = async now => {
@@ -218,12 +235,14 @@ class RecordPage extends Component {
     switch (segTab) {
       case 0: // 喂奶
         const newTime = now ? getTimeNow() : value["time"];
-
-        if (newTime === "") {
-          showToast("请输入时间", "none", 3000);
-          return;
-        } else if (!timeExp.test(newTime)) {
+        /**
+ * else if (!timeExp.test(newTime)) {
           showToast("时间格式错误！00:00", "none", 3000);
+          return;
+        }
+ */
+        if (newTime === "") {
+          showToast("请选择时间", "none", 3000);
           return;
         } else if (
           value["feedTime"] !== "" &&
@@ -257,10 +276,7 @@ class RecordPage extends Component {
       case 1: // 排便
         const pootimeValue = value["pootime"];
         if (pootimeValue === "") {
-          showToast("请输入时间", "none", 3000);
-          return;
-        } else if (!timeExp.test(pootimeValue)) {
-          showToast("时间格式错误！00:00", "none", 3000);
+          showToast("请选择时间", "none", 3000);
           return;
         } else {
           let typeData = _.get(newData[dateIndex], "poo", null);
@@ -288,13 +304,7 @@ class RecordPage extends Component {
         const startTimeValue = value["start"][1];
         const endTimeValue = value["end"][1];
         if (startTimeValue === "" || endTimeValue === "") {
-          showToast("请输入时间", "none", 3000);
-          return;
-        } else if (
-          !timeExp.test(startTimeValue) ||
-          !timeExp.test(endTimeValue)
-        ) {
-          showToast("时间格式错误！00:00", "none", 3000);
+          showToast("请选择时间", "none", 3000);
           return;
         } else {
           let typeData = _.get(newData[dateIndex], "sleep", null);
@@ -323,9 +333,6 @@ class RecordPage extends Component {
         let tempValue = value["temperture"];
         if (tempTimeValue === "") {
           showToast("请输入时间", "none", 3000);
-          return;
-        } else if (!timeExp.test(tempTimeValue)) {
-          showToast("时间格式错误！00:00", "none", 3000);
           return;
         } else if (tempValue === "") {
           showToast("请输入温度", "none", 3000);
@@ -414,8 +421,8 @@ class RecordPage extends Component {
      * 根据tab渲染不同的输入模块
      * 每个模块输出都由value控制，输出set value[key值]，每个模块的value获取value的key值
      */
-    const { segTab, value, tempValue, today } = this.state;
-    const { selectDay } = this.props;
+    const { segTab, value, tempValue, editMode, sleepTimeMode } = this.state;
+    const { selectDay, glbCustom } = this.props;
     const thisRecordName = recordType[segTab].value;
 
     switch (segTab) {
@@ -423,13 +430,23 @@ class RecordPage extends Component {
         return (
           <>
             <TitleComp title={thisRecordName + "时间"} />
-            <AtInput
+            {/* <AtInput
               name={recordType[segTab].key}
               type="text"
               placeholder={"记录" + thisRecordName + "时间"}
               value={value["time"]}
               onChange={value => this.handleChange("time", value)}
-            />
+            /> */}
+
+            <Picker
+              mode="time"
+              value={value["time"]}
+              onChange={e => this.handleChange("time", e.detail.value)}
+            >
+              <AtList>
+                <AtListItem title="请选择时间" extraText={value["time"]} />
+              </AtList>
+            </Picker>
 
             {value["feedType"] !== "food" && ( // 辅食的时候不显示
               <>
@@ -437,6 +454,7 @@ class RecordPage extends Component {
                 <VolumePicker
                   keys="volume_record"
                   title="选择喂奶量"
+                  glbCustom={glbCustom}
                   afterSetSuccess={pickerValue =>
                     this.handleChange("volumeValue", pickerValue)
                   }
@@ -475,7 +493,7 @@ class RecordPage extends Component {
         return (
           <>
             <TitleComp title={thisRecordName + "时间"} />
-            <AtInput
+            {/* <AtInput
               name={recordType[segTab].key}
               type="text"
               placeholder={"记录" + thisRecordName + "时间"}
@@ -489,7 +507,17 @@ class RecordPage extends Component {
                   现在
                 </View>
               )}
-            </AtInput>
+            </AtInput> */}
+
+            <Picker
+              mode="time"
+              value={value["pootime"]}
+              onChange={e => this.handleChange("pootime", e.detail.value)}
+            >
+              <AtList>
+                <AtListItem title="请选择时间" extraText={value["pootime"]} />
+              </AtList>
+            </Picker>
 
             <TitleComp title="性状" />
             <PooTag onSelect={value => this.handleChange("shape", value)} />
@@ -503,18 +531,41 @@ class RecordPage extends Component {
         return (
           <>
             <TitleComp title="睡眠记录" />
+            {!_.get(editMode, "edit") && (
+              <TagHeader
+                size="small"
+                type="primary"
+                page="record"
+                tagChange={value => this.setState({ sleepTimeMode: value })}
+                tagData={[
+                  {
+                    key: 0,
+                    keyName: "lastnight",
+                    text: "昨晚睡眠",
+                    active: true
+                  },
+                  { key: 1, keyName: "today", text: "今日睡眠", active: false }
+                ]}
+              />
+            )}
+
             <SleepTime
               name="sleepStart"
-              title="入睡时间"
-              time={value["start"][1]}
+              title="选择入睡时间"
+              time={value["start"]}
               currentDay={selectDay}
+              timeMode={sleepTimeMode}
+              isEdit={_.get(editMode, "edit")}
               onValue={value => this.handleChange("start", value)}
             />
+            <AtDivider content="to" fontColor="#9e9e9e" />
             <SleepTime
               name="sleepEnd"
-              title="醒来时间"
-              time={value["end"][1]}
+              title="选择醒来时间"
+              time={value["end"]}
               currentDay={selectDay}
+              timeMode={null} //醒来时间可以不用根据标签变化
+              isEdit={_.get(editMode, "edit")}
               onValue={value => this.handleChange("end", value)}
             />
           </>
@@ -524,7 +575,7 @@ class RecordPage extends Component {
         return (
           <>
             <TitleComp title={"测量" + thisRecordName + "时间"} />
-            <AtInput
+            {/* <AtInput
               name={recordType[segTab].key + "Time"}
               type="text"
               placeholder={"记录" + thisRecordName + "时间"}
@@ -538,7 +589,18 @@ class RecordPage extends Component {
                   现在
                 </View>
               )}
-            </AtInput>
+            </AtInput> */}
+
+            <Picker
+              mode="time"
+              value={value["tempTime"]}
+              onChange={e => this.handleChange("tempTime", e.detail.value)}
+            >
+              <AtList>
+                <AtListItem title="请选择时间" extraText={value["tempTime"]} />
+              </AtList>
+            </Picker>
+
             <TitleComp title="记录体温" />
             <AtInput
               name="temperture"
@@ -637,7 +699,8 @@ const mapStateToProps = state => {
   return {
     selectDay: state.gary.selectDay,
     garyData: state.gary.garyData,
-    userData: state.gary.userData
+    userData: state.gary.userData,
+    glbCustom: state.gary.globalCustom
   };
 };
 

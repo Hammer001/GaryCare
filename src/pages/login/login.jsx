@@ -31,13 +31,13 @@ class Login extends Component {
       success: res => {
         const userData = _.get(res, "data", null);
         if (userData && userData._id) {
-        //   this.setState({
-        //     userInfo: userData
-        //   });
+          //   this.setState({
+          //     userInfo: userData
+          //   });
           this.jumpToIndex();
           //this.props.changeUpdateStatus({ login: true, data: false });
           this.props.changeUserData(userData);
-          this.props.updateGaryData(_.get(userData, "data", []))
+          this.props.updateGaryData(_.get(userData, "data", []));
         }
       }
     });
@@ -136,7 +136,7 @@ class Login extends Component {
         }
       });
 
-      this.props.updateGaryData(_.get(setUserData, "data", []))
+      this.props.updateGaryData(_.get(setUserData, "data", []));
       //this.props.changeUpdateStatus({ login: true, data: true });
       this.jumpToIndex();
     }
@@ -219,7 +219,9 @@ class Login extends Component {
 }
 
 const mapStateToProps = state => {
-  return {};
+  return {
+    userData: state.gary.userData
+  };
 };
 
 const mapDispatchToProps = dispatch => {

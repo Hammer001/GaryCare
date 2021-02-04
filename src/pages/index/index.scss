@@ -68,14 +68,14 @@
 .tabPanelView {
   padding-left: 25px;
   padding-right: 25px;
-//   min-height: 700px;
+  //   min-height: 700px;
 }
 
-.noteData{
-    // css保留空格和换行符
-white-space: pre-wrap;
-// css保留换行符
-white-space: pre-line;
+.noteData {
+  // css保留空格和换行符
+  white-space: pre-wrap;
+  // css保留换行符
+  white-space: pre-line;
 }
 
 .at-tabs__header {
@@ -93,4 +93,11 @@ white-space: pre-line;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.backToday {
+  margin-top: 15px;
+  font-size: 25px;
+  text-align: center;
+  color: #97b8f5;
 }

@@ -5,7 +5,7 @@ import EmptyComp from "../../component/EmptyComp";
 import _ from "lodash";
 import "./index.scss";
 
-const NoteTab = ({ noteData, goEdit, isEmptyContent }) => {
+const NoteTab = ({ noteData, goEdit, isEmptyContent,compLoading }) => {
   return (
     <View>
       <View className="at-article">
@@ -23,7 +23,7 @@ const NoteTab = ({ noteData, goEdit, isEmptyContent }) => {
 
       {isEmptyContent && (
         <View className="emptyContentView">
-          <EmptyComp />
+          <EmptyComp loading={compLoading}/>
         </View>
       )}
     </View>

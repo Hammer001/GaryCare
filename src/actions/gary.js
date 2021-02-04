@@ -2,7 +2,8 @@ import {
   GARY_DATA,
   SELECT_DAY,
   IS_DATA_UPDATE,
-  USER_DATA
+  USER_DATA,
+  GLOBAL_CUSTOM,
 } from "../constants/gary";
 
 export const setGaryData = value => {
@@ -27,6 +28,12 @@ export const changeDataUpdateStatus = value => {
 export const changeUserData = value => {
   return {
     type: USER_DATA,
+    payload: value
+  };
+};
+export const changeGlobalCustom = value => {
+  return {
+    type: GLOBAL_CUSTOM,
     payload: value
   };
 };

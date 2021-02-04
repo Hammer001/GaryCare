@@ -18,7 +18,8 @@ import {
   setGaryData,
   setSelectDay,
   changeDataUpdateStatus,
-  changeUserData
+  changeUserData,
+  changeGlobalCustom
 } from "../../actions/gary";
 import { findDateIndex } from "../../util/findDateIndex";
 import { showToast } from "../../util/toastUtil";
@@ -30,6 +31,7 @@ import PooList from "./pooList";
 import SleepList from "./sleepList";
 import { newRequest } from "../../util/requestUtil";
 import { isEmptyString } from "../../util/isEmptyString";
+import { globalUrl } from "../../util/globalUrl";
 import _ from "lodash";
 import "./index.scss";
 /**
@@ -66,7 +68,7 @@ class Index extends Component {
     return {
       title: "GaryCare",
       path: "/pages/login/login",
-      // imageUrl: "/images/aikepler-logo.jpeg",
+      imageUrl: globalUrl + "/GaryCareLogo2.png",
       success: function(res) {
         // 转发成功
         console.log("转发成功", res);
@@ -93,6 +95,27 @@ class Index extends Component {
       newRequest("/get/user/data", params).then(data => {
         console.log("didShow获取");
         let getData = _.get(data, "callback.data", []);
+        let getCustom = _.get(data, "callback.custom", null);
+        let getError = _.get(data, "error", null);
+        if (getError) {
+          this.wrongDataAndLogout();
+          return; // 出错直接return，不继续
+        }
+        if (getCustom) {
+          // 2.0.8修改
+          let getDurationNumber = _.split(_.get(getCustom, "duration"), "")[0];
+          let formatDuration = _.isNumber(Number(getDurationNumber))
+            ? Number(getDurationNumber) // volumePicker传出来的格式是'3小时'，不再是单一数字了，需要转换
+            : 0;
+          // console.log("formatDuration", formatDuration);
+
+          this.setState({
+            duration: formatDuration
+          });
+
+          this.props.changeGlbCustom(getCustom); //全局将custom所以数据传进去
+        }
+
         Taro.setStorage({
           key: "gary-care",
           data: getData
@@ -105,28 +128,10 @@ class Index extends Component {
 
         this.props.updateGaryData(getData);
       });
+    } else {
+      showToast("请重新登录！", "none", 3000);
+      this.wrongDataAndLogout();
     }
-
-    Taro.getStorage({
-      key: "gary-custom",
-      success: res => {
-        const getData = _.get(res, "data", null);
-        // console.log(getData);
-
-        if (getData) {
-          // volumePicker传出来的格式是'3小时'，不再是单一数字了，需要转换
-          let getDurationNumber = _.split(_.get(getData, "duration"), "")[0];
-          let formatDuration = _.isNumber(Number(getDurationNumber))
-            ? Number(getDurationNumber)
-            : 0;
-          //   console.log("formatDuration", formatDuration);
-
-          this.setState({
-            duration: formatDuration
-          });
-        }
-      }
-    });
   }
 
   componentDidMount() {
@@ -151,6 +156,30 @@ class Index extends Component {
     //this.props.changeUserLoginStatus(false); //用户重新登录完进行将状态改为false
   }
 
+  wrongDataAndLogout = () => {
+    /**
+     * 避免出现意外错误，index页面增加登出操作
+     */
+    Taro.removeStorage({
+      key: "gary-care",
+      success: function(res) {
+        console.log("登出清除gary-care");
+      }
+    });
+
+    Taro.removeStorage({
+      key: "user",
+      success: res => {
+        //redux清空数据
+        console.log("登出清除user");
+      }
+    });
+    this.props.changeUserData({});
+    this.props.updateGaryData([]);
+    //this.props.changeUpdateStatus({ login: false, data: false });
+    Taro.redirectTo({ url: "/pages/login/login" });
+  };
+
   onTabChange(value) {
     this.setState({
       tab: value
@@ -158,6 +187,7 @@ class Index extends Component {
   }
 
   onCalendarChange({ value }) {
+    console.log(value);
     this.setState({ currentDay: value });
     this.props.updateSelectDay(value);
   }
@@ -202,7 +232,7 @@ class Index extends Component {
 
   goInput = (type, index, dataIndex) => {
     const tabIndex = _.isNumber(index) ? "&tabIndex=" + index : ""; //跳转后显示那个tab的数据
-    const newDataIndex = _.isNumber(dataIndex) ? "&dataIndex=" + dataIndex : ""; // 所点击的item所在的index
+    const newDataIndex = _.isNumber(dataIndex) ? "&dataIndex=" + dataIndex : ""; // 所点击的item所在数据中的index
     const newUrl = "?type=" + type + tabIndex + newDataIndex;
     Taro.navigateTo({
       url: "/pages/record/record" + newUrl
@@ -223,7 +253,7 @@ class Index extends Component {
 
     if (getCurrentItem) {
       this.setState({
-        pageLoading: false
+        pageLoading: true
       });
 
       _.remove(currentList, r => r.key === getCurrentItem.key);
@@ -299,6 +329,7 @@ class Index extends Component {
     const currentData = dateIndex !== -1 ? feedData[dateIndex] : null;
     // diffDay 记录今天与选择的天数的差距，0是当天，负数是未来的天数，正数是过去的天数
     const diffDay = moment(this.today).diff(moment(currentDay), "days");
+    const recordButtonDisable = diffDay < 0 || pageLoading ? true : false;
     // console.log("diff3", diff3);
     // console.log("markDate", markDate);
     return (
@@ -314,6 +345,7 @@ class Index extends Component {
         {/* <ScrollView scrollY onScroll={this.onScroll}  scrollWithAnimation style='height:100vh'> */}
         <View className="calendarView">
           <AtCalendar
+            currentDate={currentDay}
             format="YYYY-MM-DD"
             marks={markDate}
             onDayClick={value => this.onCalendarChange(value)}
@@ -328,16 +360,20 @@ class Index extends Component {
               size="small"
               circle
               onClick={() => this.goInput(tab)}
-              disabled={diffDay < 0 ? true : false}
+              disabled={recordButtonDisable}
+              loading={pageLoading}
             >
               <AtIcon value="add-circle" size="16"></AtIcon>
               <Text style="marign-left:7rpx;"> 记录宝宝的日常</Text>
             </AtButton>
+            <View
+              className="backToday" //直接setState会导致全局没有更新数据，记录时会不更新时间
+              onClick={() => this.onCalendarChange({ value: this.today })}
+            >
+              {diffDay !== 0 && "返回今天"}
+            </View>
           </View>
         </View>
-
-        {/* <AtActivityIndicator mode="center" isOpened={pageLoading} size={35}>
-        </AtActivityIndicator> */}
 
         <View id="tabView" className="tabView">
           <AtTabs
@@ -349,6 +385,7 @@ class Index extends Component {
             <AtTabsPane current={tab} index={0}>
               <View className="tabPanelView">
                 <FeedList
+                  compLoading={pageLoading}
                   feedData={_.get(currentData, "feed", null)}
                   nextFeed={duration}
                   selectedDay={currentDay}
@@ -362,6 +399,7 @@ class Index extends Component {
             <AtTabsPane current={tab} index={1}>
               <View className="tabPanelView">
                 <PooList
+                  compLoading={pageLoading}
                   pooData={_.get(currentData, "poo", "")}
                   selectedDay={currentDay}
                   today={this.today}
@@ -374,6 +412,7 @@ class Index extends Component {
             <AtTabsPane current={tab} index={2}>
               <View className="tabPanelView">
                 <SleepList
+                  compLoading={pageLoading}
                   sleepList={_.get(currentData, "sleep", "")}
                   selectedDay={currentDay}
                   today={this.today}
@@ -392,6 +431,7 @@ class Index extends Component {
             <AtTabsPane current={tab} index={3}>
               <View className="tabPanelView">
                 <TempertureList
+                  compLoading={pageLoading}
                   tempData={_.get(currentData, "temperture", null)}
                   onItemClick={(dataIndex, itemData) =>
                     this.handleActionSheet(
@@ -408,6 +448,7 @@ class Index extends Component {
             <AtTabsPane current={tab} index={4}>
               <View className="tabPanelView">
                 <NoteTab
+                  compLoading={pageLoading}
                   noteData={_.get(currentData, "note", "")}
                   goEdit={() => this.goInput("note", 4, 0)}
                   isEmptyContent={isEmptyString(_.get(currentData, "note", ""))}
@@ -440,7 +481,8 @@ const mapStateToProps = state => {
     garyData: state.gary.garyData,
     selectDay: state.gary.selectDay,
     isUpdate: state.gary.isDataUpate,
-    userData: state.gary.userData
+    userData: state.gary.userData,
+    glbCustom: state.gary.globalCustom
   };
 };
 
@@ -457,6 +499,9 @@ const mapDispatchToProps = dispatch => {
     },
     changeUserData: status => {
       dispatch(changeUserData(status));
+    },
+    changeGlbCustom: duration => {
+      dispatch(changeGlobalCustom(duration));
     }
   };
 };

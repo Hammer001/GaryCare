@@ -15,7 +15,7 @@ const colorTagDot = [
   { name: "红色", type: "red", dotImg: globalUrl + "/color_tag_6.png" }
 ];
 
-const PooList = ({ pooData, onItemClick, batchDel }) => {
+const PooList = ({ pooData, onItemClick, compLoading }) => {
   let newPooData = null;
   if (pooData && _.isArray(pooData) && _.size(pooData) > 0) {
     newPooData = pooData;
@@ -57,7 +57,7 @@ const PooList = ({ pooData, onItemClick, batchDel }) => {
   } else {
     return (
       <View className="emptyContentView">
-        <EmptyComp />
+        <EmptyComp loading={compLoading}/>
       </View>
     );
   }

@@ -1,16 +1,19 @@
 import React from "react";
 import { View, Image, Text } from "@tarojs/components";
+import { AtActivityIndicator } from "taro-ui";
 import Empty from "../../asserts/empty.png";
-
-const EmptyComp = ({ jumpTo }) => {
-  const textStyle =
-    "font-size: 24rpx;color: #78a4fa;display: block;text-align: center;margin-top: 20rpx;";
-  return (
-    <View
-    //onClick={() => jumpTo()}
-    >
-      <Image src={Empty} style="width:200rpx;height:200rpx" />
-      <Text style={textStyle}>还没有记录</Text>
+import "./index.scss";
+const EmptyComp = ({ loading }) => {
+  return loading ? (
+    <AtActivityIndicator
+      isOpened={true}
+      size={32}
+      mode="center"
+    ></AtActivityIndicator>
+  ) : (
+    <View>
+      <Image src={Empty} className="emptyImg" />
+      <Text className="textStyle">还没有记录</Text>
     </View>
   );
 };

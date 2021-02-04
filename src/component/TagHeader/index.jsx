@@ -1,17 +1,11 @@
 import React, { Component } from "react";
 import { View, Text } from "@tarojs/components";
 import { AtTag } from "taro-ui";
-import "./analysis.scss";
-
-const usual_tag = [
-  { key: 0, keyName: "all", text: "全部", active: true },
-  { key: 1, keyName: "weeks", text: "近一周", active: false },
-  { key: 2, keyName: "month", text: "近一月", active: false }
-];
+import "../component.scss";
 
 class TagHeader extends Component {
   state = {
-    usualTag: usual_tag
+    usualTag: this.props.tagData
   };
 
   handleTagChange = (tag, status) => {
@@ -22,12 +16,14 @@ class TagHeader extends Component {
     this.props.tagChange(tag.keyName);
   };
   render() {
+    const { size, type, page } = this.props;
     return (
-      <View className="tagContainer">
+      <View className={page === "record" ? "sleepContainer" : "tagContainer"}>
         {this.state.usualTag.map(tag => (
           <AtTag
             circle
-            size="normal"
+            size={size}
+            type={type || ""}
             active={tag.active}
             name={tag.text}
             onClick={(name, active) => this.handleTagChange(tag, name)}

@@ -31,7 +31,7 @@ function tempLevel(temp) {
   }
 }
 
-const TempertureList = ({ tempData, onItemClick }) => {
+const TempertureList = ({ tempData, compLoading, onItemClick }) => {
   if (tempData && _.isArray(tempData) && _.size(tempData) > 0) {
     return (
       <AtList>
@@ -49,7 +49,7 @@ const TempertureList = ({ tempData, onItemClick }) => {
               extraText={_.get(status, "title", "")}
               thumb={_.get(status, "icon")}
               note={newTime}
-              onClick={() => onItemClick(i,item)}
+              onClick={() => onItemClick(i, item)}
             />
           );
         })}
@@ -58,7 +58,7 @@ const TempertureList = ({ tempData, onItemClick }) => {
   } else {
     return (
       <View className="emptyContentView">
-        <EmptyComp />
+        <EmptyComp loading={compLoading} />
       </View>
     );
   }

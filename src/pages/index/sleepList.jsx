@@ -7,7 +7,7 @@ import { globalUrl } from "../../util/globalUrl";
 import _ from "lodash";
 import "./index.scss";
 
-const SleepList = ({ sleepList, onItemClick, batchDel }) => {
+const SleepList = ({ sleepList, onItemClick, compLoading }) => {
   let newSleepData = null;
   if (sleepList && _.isArray(sleepList) && _.size(sleepList) > 0) {
     newSleepData = sleepList;
@@ -23,13 +23,24 @@ const SleepList = ({ sleepList, onItemClick, batchDel }) => {
           {newSleepData.map((item, i) => {
             const newStart = _.replace(item.start, "/", " ");
             const newEnd = _.replace(item.end, "/", " ");
-            const diff = moment(newStart).diff(moment(newEnd), "hours");
+            const diffHours = Math.abs(
+              moment(newStart).diff(moment(newEnd), "hours")
+            );
+            const diffMin = Math.abs(
+              moment(newStart).diff(moment(newEnd), "minute")
+            );
+            let newTime;
+            if (diffHours > 0) {
+              newTime = diffHours + "小时" + (diffMin % 60) + "分钟";
+            } else {
+              newTime = diffMin + "分钟";
+            }
             return (
               <AtListItem
-                title={Math.abs(diff) + "小时"}
+                title={newTime}
                 thumb={globalUrl + "/sleep_mini.png"}
                 note={newStart + " to " + newEnd}
-                onClick={() => onItemClick(i,item)}
+                onClick={() => onItemClick(i, item)}
               />
             );
           })}
@@ -39,7 +50,7 @@ const SleepList = ({ sleepList, onItemClick, batchDel }) => {
   } else {
     return (
       <View className="emptyContentView">
-        <EmptyComp />
+        <EmptyComp loading={compLoading}/>
       </View>
     );
   }

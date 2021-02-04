@@ -19,6 +19,7 @@
 
 .rightContainer {
   //   border-left: 1px #d6e4ef solid;
+  text-align: center;
 }
 
 .rightComp {
@@ -27,7 +28,7 @@
 }
 
 .countText {
-  font-size: 55px;
+  font-size: 50px;
   font-weight: 600;
   color: #6190e8;
 }
@@ -44,3 +45,11 @@
 // .at-card__content {
 //   padding: 0px 24px 24px 24px;
 // }
+
+.at-timeline-item__content {
+  font-size: 31px;
+}
+
+.at-timeline-item__content-item {
+  margin-top: 10px;
+}
