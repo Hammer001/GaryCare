@@ -399,7 +399,7 @@ class RecordPage extends Component {
           let isError = _.get(value, "error");
           if (!isError) {
             this.props.updateGaryData(data);
-            //this.props.changeUpdateStatus({ login: false, data: true });
+            this.props.changeUpdateStatus({ data: true });
             showToast("记录成功！", "success", 2000);
 
             this.setState({

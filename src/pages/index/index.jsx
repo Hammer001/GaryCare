@@ -81,56 +81,8 @@ class Index extends Component {
   }
 
   componentDidShow(options) {
-    const { userData, garyData } = this.props;
-    // console.log("index：进入小程序", options);
-
-    if (_.get(userData, "_id", null)) {
-      this.setState({
-        pageLoading: true
-      });
-
-      let params = {
-        _id: userData._id
-      };
-      newRequest("/get/user/data", params).then(data => {
-        console.log("didShow获取");
-        let getData = _.get(data, "callback.data", []);
-        let getCustom = _.get(data, "callback.custom", null);
-        let getError = _.get(data, "error", null);
-        if (getError) {
-          this.wrongDataAndLogout();
-          return; // 出错直接return，不继续
-        }
-        if (getCustom) {
-          // 2.0.8修改
-          let getDurationNumber = _.split(_.get(getCustom, "duration"), "")[0];
-          let formatDuration = _.isNumber(Number(getDurationNumber))
-            ? Number(getDurationNumber) // volumePicker传出来的格式是'3小时'，不再是单一数字了，需要转换
-            : 0;
-          // console.log("formatDuration", formatDuration);
-
-          this.setState({
-            duration: formatDuration
-          });
-
-          this.props.changeGlbCustom(getCustom); //全局将custom所以数据传进去
-        }
-
-        Taro.setStorage({
-          key: "gary-care",
-          data: getData
-        });
-
-        this.setState({
-          feedData: getData,
-          pageLoading: false
-        });
-
-        this.props.updateGaryData(getData);
-      });
-    } else {
-      showToast("请重新登录！", "none", 3000);
-      this.wrongDataAndLogout();
+    if (_.get(this.props, "isUpdate.data")) {
+      this.getDataFromServer();
     }
   }
 
@@ -155,6 +107,62 @@ class Index extends Component {
     });
     //this.props.changeUserLoginStatus(false); //用户重新登录完进行将状态改为false
   }
+
+  getDataFromServer = () => {
+    const { userData, garyData } = this.props;
+    // console.log("index：进入小程序", options);
+
+    if (_.get(userData, "_id", null)) {
+      this.setState({
+        pageLoading: true
+      });
+
+      let params = {
+        _id: userData._id
+      };
+      newRequest("/get/user/data", params).then(data => {
+        console.log("获取data");
+        let getData = _.get(data, "callback.data", []);
+        let getCustom = _.get(data, "callback.custom", null);
+        let getError = _.get(data, "error", null);
+        if (getError) {
+          this.wrongDataAndLogout();
+          return; // 出错直接return，不继续
+        }
+        if (getCustom) {
+          // 2.0.8修改
+          let getDurationNumber = _.split(_.get(getCustom, "duration"), "")[0];
+          let formatDuration = _.isNumber(Number(getDurationNumber))
+            ? Number(getDurationNumber) // volumePicker传出来的格式是'3小时'，不再是单一数字了，需要转换
+            : 0;
+        //   console.log("formatDuration", formatDuration);
+
+          this.setState({
+            duration: formatDuration
+          });
+
+          this.props.changeGlbCustom(getCustom); //全局将custom所以数据传进去
+        }
+
+        Taro.setStorage({
+          key: "gary-care",
+          data: getData
+        });
+
+        this.setState({
+          feedData: getData,
+          pageLoading: false
+        });
+
+        this.props.updateGaryData(getData);
+      });
+    } else {
+      showToast("请重新登录！", "none", 3000);
+      this.wrongDataAndLogout();
+    }
+
+    this.props.changeUpdateStatus({ data: false });
+  };
 
   wrongDataAndLogout = () => {
     /**
@@ -223,6 +231,7 @@ class Index extends Component {
           });
 
           this.props.updateGaryData(getData);
+          this.props.changeUpdateStatus({ data: false });
         });
       }
       Taro.stopPullDownRefresh();
@@ -268,18 +277,10 @@ class Index extends Component {
         newRequest("/update/user/data", params).then(data => {
           let isError = _.get(data, "error");
           if (!isError) {
-            this.props.updateGaryData(newFeedData);
+            this.getDataFromServer();
             this.handleActionSheet(false, "", 0, 0, null);
             showToast("删除成功！", "success", 2000);
           }
-
-          this.setState({
-            pageLoading: false
-          });
-        });
-        Taro.setStorage({
-          key: "gary-care",
-          data: newFeedData
         });
       }
     }

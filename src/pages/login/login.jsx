@@ -35,7 +35,7 @@ class Login extends Component {
           //     userInfo: userData
           //   });
           this.jumpToIndex();
-          //this.props.changeUpdateStatus({ login: true, data: false });
+          this.props.changeUpdateStatus({ data: true });
           this.props.changeUserData(userData);
           this.props.updateGaryData(_.get(userData, "data", []));
         }
