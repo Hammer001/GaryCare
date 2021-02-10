@@ -137,7 +137,7 @@ class Login extends Component {
       });
 
       this.props.updateGaryData(_.get(setUserData, "data", []));
-      //this.props.changeUpdateStatus({ login: true, data: true });
+      this.props.changeUpdateStatus({ data: true });
       this.jumpToIndex();
     }
   };

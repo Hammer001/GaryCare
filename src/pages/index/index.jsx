@@ -4,15 +4,15 @@ import { connect } from "react-redux";
 import { View, Text, ScrollView } from "@tarojs/components";
 // import { WeekSwiper } from 'taro-week-swiper'
 import {
-  AtCalendar,
+  //   AtCalendar,
   AtTabs,
   AtTabsPane,
   AtButton,
   AtActionSheet,
   AtActionSheetItem,
   AtIcon,
-  AtActivityIndicator
 } from "taro-ui";
+import AtCalendar from "../../component/NewCalendar";
 import { getToday } from "../../util/timeUtil";
 import {
   setGaryData,
@@ -51,6 +51,7 @@ class Index extends Component {
     super(props);
     this.state = {
       tab: 0,
+      feedData: [],
       currentDay: null,
       duration: null,
       actionOpen: false,
@@ -135,7 +136,7 @@ class Index extends Component {
           let formatDuration = _.isNumber(Number(getDurationNumber))
             ? Number(getDurationNumber) // volumePicker传出来的格式是'3小时'，不再是单一数字了，需要转换
             : 0;
-        //   console.log("formatDuration", formatDuration);
+          //   console.log("formatDuration", formatDuration);
 
           this.setState({
             duration: formatDuration
@@ -314,8 +315,6 @@ class Index extends Component {
       feedData,
       currentDay,
       duration,
-      actionOpen,
-      markDate,
       editActon,
       pageLoading
     } = this.state;
@@ -331,6 +330,12 @@ class Index extends Component {
     // diffDay 记录今天与选择的天数的差距，0是当天，负数是未来的天数，正数是过去的天数
     const diffDay = moment(this.today).diff(moment(currentDay), "days");
     const recordButtonDisable = diffDay < 0 || pageLoading ? true : false;
+    const markDate =
+      _.isArray(feedData) && _.size(feedData) > 0
+        ? feedData.map(d => {
+            return { value: _.replace(d.date, "-", "/") };
+          })
+        : [];
     // console.log("diff3", diff3);
     // console.log("markDate", markDate);
     return (

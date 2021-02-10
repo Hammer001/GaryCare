@@ -11,3 +11,7 @@ export const getToday = () => {
 export const getTimeNow = () => {
   return moment().format(timeFormat);
 };
+
+export const getYesterday=()=>{
+    return moment().subtract(1, "days").format(dateFormat);
+}

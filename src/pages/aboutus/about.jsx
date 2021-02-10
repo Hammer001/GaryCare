@@ -65,7 +65,7 @@ class AboutPage extends Component {
         <View className="at-article__content">
           <View className="at-article__section">
             <View className="at-article__h2">
-              方便宝妈们记录未断奶宝宝的记录宝宝所需的日常
+              方便宝妈们记录宝宝所需的日常健康数据
             </View>
             {/* <View className="at-article__h3">如有喜欢，可以请开发者喝杯咖啡</View>
             <Image

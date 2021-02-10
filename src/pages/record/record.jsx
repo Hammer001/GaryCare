@@ -24,6 +24,7 @@ import TagHeader from "../../component/TagHeader";
 import { globalUrl } from "../../util/globalUrl";
 import { showToast } from "../../util/toastUtil";
 import { newRequest } from "../../util/requestUtil";
+import moment from "moment";
 import _ from "lodash";
 import "./record.scss";
 
@@ -303,8 +304,15 @@ class RecordPage extends Component {
       case 2: // 睡眠
         const startTimeValue = value["start"][1];
         const endTimeValue = value["end"][1];
+        const diffStartAndEnd = moment(_.join(value["end"], " ")).diff(
+          moment(_.join(value["start"], " ")),
+          "minute"
+        );
         if (startTimeValue === "" || endTimeValue === "") {
           showToast("请选择时间", "none", 3000);
+          return;
+        } else if (diffStartAndEnd < 0) {
+          showToast("醒来时间不能在睡眠时间之前", "none", 3000);
           return;
         } else {
           let typeData = _.get(newData[dateIndex], "sleep", null);

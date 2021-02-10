@@ -10,20 +10,23 @@ export async function newRequest(url, params) {
     method: "POST",
     data: params,
     header: {
-      "content-type": "application/json",
+      "content-type": "application/json"
     },
+    fail: () => {
+      showToast("网络连接错误！", "close", 3500);
+    }
   });
-  //   console.log("newRequest", response);
+  console.log("newRequest", response);
   if (_.get(response, "data", null)) {
     if (
       _.get(response, "data.error", null) &&
       _.get(response, "data.msg", null)
     ) {
-      showToast(_.get(response, "data.msg"), "error", 3500);
+      showToast(_.get(response, "data.msg"), "close", 3500);
     }
     return response.data;
   } else {
-    showToast("网络连接错误！", "error", 3500);
+    showToast("网络连接错误！", "close", 3500);
     return false;
   }
 }

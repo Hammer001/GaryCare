@@ -4,6 +4,7 @@
 @import "~taro-ui/dist/style/components/flex.scss";
 @import "~taro-ui/dist/style/components/tag.scss";
 @import "~taro-ui/dist/style/components/divider.scss";
+@import "~taro-ui/dist/style/components/message.scss";
 
 .cardView {
   margin-top: 30px;
@@ -52,4 +53,8 @@
 
 .at-timeline-item__content-item {
   margin-top: 10px;
+}
+
+.at-timeline-item__dot::after {
+  border-color: white;
 }

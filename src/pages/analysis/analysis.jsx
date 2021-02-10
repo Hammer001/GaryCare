@@ -2,9 +2,10 @@ import React, { Component } from "react";
 import Taro from "@tarojs/taro";
 import { connect } from "react-redux";
 import { View, Text, ScrollView, WebView } from "@tarojs/components";
-import { AtCard, AtTimeline, AtDivider } from "taro-ui";
-import moment from "moment";
-import TitleComp from "../../component/TitleComp";
+import { AtCard, AtDivider, AtIcon, AtMessage } from "taro-ui";
+import moment, { duration } from "moment";
+import { getToday, getYesterday } from "../../util/timeUtil";
+import AtTimeline from "../../component/NewTimeline";
 // import Charts from "../../component/Charts";
 import TagHeader from "../../component/TagHeader";
 import { globalUrl } from "../../util/globalUrl";
@@ -33,6 +34,8 @@ class Analysis extends Component {
       allData: [],
       timeRange: "all"
     };
+    this.today = getToday();
+    this.yesterday = getYesterday();
   }
   componentDidShow() {
     const { garyData } = this.props;
@@ -40,13 +43,14 @@ class Analysis extends Component {
     let timeCache = { date: "", cache: [] };
     if (garyData && _.size(garyData) > 0) {
       //增加为分析页面用的数据，将睡眠数据拆开，区分昨天今天的时间线
-      convertTimeData = _.reverse(garyData).map(g => {
+      convertTimeData = _.reverse(_.cloneDeep(garyData)).map(g => {
         let gDate = g.date; // 拿到遍历数据的日期
         let gSleep = g.sleep;
         _.isArray(g.poo) && g.poo.map(p => (p.time = p.pootime)); // 遍历将不同名称的时间统一为time
         _.isArray(g.temperture) && g.temperture.map(t => (t.time = t.tempTime));
         g.extractSleep = [];
-        if (gDate === timeCache.date) { //【cache】: 当前日期gDate等于cache的日期，将数据加入extractSleep，数据会加入到前一天的数据中
+        if (gDate === timeCache.date) {
+          //【cache】: 当前日期gDate等于cache的日期，将数据加入extractSleep，数据会加入到前一天的数据中
           g.extractSleep = [...timeCache.cache];
           timeCache.cache = [];
         }
@@ -94,6 +98,15 @@ class Analysis extends Component {
   handleMessage(e) {
     console.log(e);
   }
+  renderCardExtra = date => {
+    if (date === this.today) {
+      return "今天";
+    } else if (date === this.yesterday) {
+      return "昨天";
+    } else {
+      return null;
+    }
+  };
   render() {
     const { allData, timeRange } = this.state;
     let newConvertData;
@@ -108,27 +121,52 @@ class Analysis extends Component {
       <ScrollView scrollY scrollWithAnimation className="container">
         {/* <Charts /> */}
 
-        <TagHeader
-          size="normal"
-          page="analysis"
-          tagChange={value => this.setState({ timeRange: value })}
-          tagData={[
-            { key: 0, keyName: "all", text: "全部", active: true },
-            { key: 1, keyName: "weeks", text: "近一周", active: false },
-            { key: 2, keyName: "month", text: "近一月", active: false }
-          ]}
-        />
+        <View className="at-row at-row__justify--between">
+          <View className="at-col at-col-8">
+            {" "}
+            <TagHeader
+              size="normal"
+              page="analysis"
+              tagChange={value => this.setState({ timeRange: value })}
+              tagData={[
+                { key: 0, keyName: "all", text: "全部", active: true },
+                { key: 1, keyName: "weeks", text: "近一周", active: false },
+                { key: 2, keyName: "month", text: "近一月", active: false }
+              ]}
+            />
+          </View>
+          <View
+            className="at-col at-col-2"
+            style="text-align:center;padding-top:30rpx"
+          >
+            <AtIcon
+              value="help"
+              size="18"
+              color="#9e9e9e"
+              onClick={() => {
+                Taro.atMessage({
+                  message:
+                    "昨晚睡眠时长 根据7点之前的入睡时间计算; 如前一天12点前睡醒，算作昨日睡眠数据",
+                  // 'type': type,
+                  duration: 5000
+                });
+              }}
+            ></AtIcon>
+          </View>
+        </View>
 
         {newConvertData.map(item => {
           let newItem = [];
-          let rightComp = null;
+          let rightComp = null; //卡片右侧部分统计模块
           let pooCount = 0;
           let feedCount = 0;
-          let minCount = 0;
-          let hourCount = 0;
-          let isLastDay = false;
-          let lastDayCount = "";
-          let newTime;
+          let minCount = 0; //分钟计算
+          let hourCount = 0; //小时计算
+          let isLastDay = false; // 计算是否有昨天的睡眠
+          let lastDayHourCount = 0;
+          let lastDayMinCount = 0;
+          let lastDayNewTime;
+          let newTime; //渲染最好带'分钟、小时'的字符串
           if (item.feed && item.poo && item.temperture && item.extractSleep) {
             newItem = _.concat(
               item.feed,
@@ -146,7 +184,7 @@ class Analysis extends Component {
             if (f.type) {
               //喂奶
               obj.title = f.time + " - " + typeName[f.type];
-              obj.color = "green";
+              obj.color = "#ff7fab";
               if (f.volume) {
                 obj.content = [f.volume];
               }
@@ -155,18 +193,18 @@ class Analysis extends Component {
               //排便
               obj.title = f.time;
               obj.content = ["排便"];
-              obj.color = "yello";
+              obj.color = "#ffd700";
               pooCount++; // 计算排便次数
             } else if (f.tempValue) {
               //温度
               obj.title = f.time;
               obj.content = [f.tempValue + "℃"];
-              obj.color = "red";
+              obj.color = "#1de9b6";
             } else if (f.sleep) {
               //睡眠
               obj.title = f.time;
               obj.content = [f.name];
-              obj.color = "blue";
+              obj.color = "#95e8f3";
             }
 
             return obj;
@@ -185,18 +223,29 @@ class Analysis extends Component {
               let diffDay = Math.abs(
                 moment(startDate).diff(moment(endDate), "day")
               );
-              let diffHours = Math.abs(
-                moment(sStart).diff(moment(sEnd), "hours")
+              let diffHours = moment(sStart).diff(moment(sEnd), "hours");
+              let diffMin = moment(sStart).diff(moment(sEnd), "minute");
+              let diffHoursBeforeSevenClock = moment(sStart).diff(
+                moment(endDate + " 07:00"),
+                "hours"
               );
-              let diffMin = Math.abs(
-                moment(sStart).diff(moment(sEnd), "minute")
+              let diffMinBeforeSevenClock = moment(sStart).diff(
+                moment(endDate + " 07:00"),
+                "minute"
               );
-              if (diffDay === 1) {
+              // 以7点为结束计算时间，在此之前都算作昨晚睡眠
+              // diffHoursBeforeSevenClock 为负数的时候，说明是在当日7点之前
+              if (
+                diffDay === 1 ||
+                diffHoursBeforeSevenClock < 0 ||
+                diffMinBeforeSevenClock < 0
+              ) {
                 isLastDay = true;
-                lastDayCount = diffHours + "小时" + (diffMin % 60) + "分钟";
+                lastDayMinCount = lastDayMinCount + Math.abs(diffMin);
+                lastDayHourCount = lastDayHourCount + Math.abs(diffHours);
               } else {
-                minCount = minCount + diffMin;
-                hourCount = hourCount + diffHours;
+                minCount = minCount + Math.abs(diffMin);
+                hourCount = hourCount + Math.abs(diffHours);
               }
             });
 
@@ -204,6 +253,13 @@ class Analysis extends Component {
             newTime = hourCount + "小时" + (minCount % 60) + "分钟";
           } else {
             newTime = minCount + "分钟";
+          }
+
+          if (lastDayHourCount > 0) {
+            lastDayNewTime =
+              lastDayHourCount + "小时" + (lastDayMinCount % 60) + "分钟";
+          } else {
+            lastDayNewTime = lastDayMinCount + "分钟";
           }
 
           rightComp = (
@@ -235,7 +291,7 @@ class Analysis extends Component {
                 <View className="rightComp">
                   <View className="countContent">昨晚睡眠时长:</View>
                   <View className="countText" style="font-size:45rpx">
-                    {lastDayCount}
+                    {lastDayNewTime}
                   </View>
                 </View>
               ) : null}
@@ -247,6 +303,7 @@ class Analysis extends Component {
               <AtCard
                 note={item.note || null}
                 title={item.date}
+                extra={this.renderCardExtra(item.date)}
                 thumb={globalUrl + "/calendar_color.png"}
               >
                 <View className="at-row">
@@ -260,6 +317,7 @@ class Analysis extends Component {
           );
         })}
         <AtDivider content="没有更多了" />
+        <AtMessage />
       </ScrollView>
     );
   }
